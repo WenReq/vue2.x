@@ -73,13 +73,13 @@
     * 旧节点没有子节点，新节点有子节点，则用心的所有子节点去更新旧节点。
     * 新旧都存在子节点，则对比子节点内容做操作（updateChildren）。
   * updateChildren
-    1. 旧节点的起始位置为 oldStartIndex，截止位置 oldEndIndex，新节点的起始位置为 newStartIndex，截止位置为 newEndIndex。
-    2. 新旧 children 的起始位置的元素两两对比，顺序是 newStartVnode,oldStartVnode; newEndVnode,oldEndVnode; newEndVnode,oldStartVnode; newStartVnode,oldEndVnode
-    3. newStartVnode,oldStartVnode 节点相同，执行一次 patchVnode 过程，递归对比相应子节点，并替换节点。oldStartIndex,newStartIndex 都向右移动一位。
-    4. newEndVnode,oldEndVnode 节点相同，执行一次 patchVnode 过程，递归对比相应子节点，并替换节点。oldEndIndex,newEndIndex 都向左移动一位。
-    5. newEndVnode,oldStartVnode 节点相同，执行一次 patchVnode 过程，并将旧的 oldStartVnode 移动到尾部，oldStartIndex 右移一位，newEndIndex 左移一位。
-    6. newStartVnode,oldEndVnode 节点相同，执行一次 patchVnode 过程，并将旧的 oldEndVnode 移动到头部，oldEndIndex 左移一位，newStartIndex 右移一位。
-    7. 四种组合都不同，则会搜索旧节点所有子节点，找到将这个旧节点和 newStartVnode 执行 patchVnode 过程。
-    8. 不断的对比的过程使得 oldStartIndex 不断逼近 oldEndIndex , newStartIndex 不断逼近 newEndIndex 。当 oldEndIndex <= oldStartIndex 说明旧节点已经遍历完了，此时只要批量增加新节点即可。当 newEndIndex <= newStartIndex 说明旧节点还有剩下，此时只要批量删除旧节点即可。 <br>
+    - 旧节点的起始位置为 oldStartIndex，截止位置 oldEndIndex，新节点的起始位置为 newStartIndex，截止位置为 newEndIndex。
+    - 新旧 children 的起始位置的元素两两对比，顺序是 newStartVnode,oldStartVnode; newEndVnode,oldEndVnode; newEndVnode,oldStartVnode; newStartVnode,oldEndVnode
+    - newStartVnode,oldStartVnode 节点相同，执行一次 patchVnode 过程，递归对比相应子节点，并替换节点。oldStartIndex,newStartIndex 都向右移动一位。
+    - newEndVnode,oldEndVnode 节点相同，执行一次 patchVnode 过程，递归对比相应子节点，并替换节点。oldEndIndex,newEndIndex 都向左移动一位。
+    - newEndVnode,oldStartVnode 节点相同，执行一次 patchVnode 过程，并将旧的 oldStartVnode 移动到尾部，oldStartIndex 右移一位，newEndIndex 左移一位。
+    - newStartVnode,oldEndVnode 节点相同，执行一次 patchVnode 过程，并将旧的 oldEndVnode 移动到头部，oldEndIndex 左移一位，newStartIndex 右移一位。
+    - 四种组合都不同，则会搜索旧节点所有子节点，找到将这个旧节点和 newStartVnode 执行 patchVnode 过程。
+    - 不断的对比的过程使得 oldStartIndex 不断逼近 oldEndIndex , newStartIndex 不断逼近 newEndIndex 。当 oldEndIndex <= oldStartIndex 说明旧节点已经遍历完了，此时只要批量增加新节点即可。当 newEndIndex <= newStartIndex 说明旧节点还有剩下，此时只要批量删除旧节点即可。 <br>
 当四种比较节点多找不到匹配时，会调用 findIdxInOld 找到旧节点中和新的比较节点一致的节点。  <br>
 唯一属性 key，有了这个唯一的标志位，我们可以对旧节点建立简单的字典查询，只要有 key 值便可以方便的搜索到符合要求的旧节点。
