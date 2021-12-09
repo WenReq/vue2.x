@@ -18,6 +18,19 @@
      4. 添加静态属性：添加 components,directives,filters 静态对象，记录静态组件
      5. initUse - Vue.use() 安装插件、initMixin$1 - Vue.mixin() 合并参数、initExtend - Vue.extend() 继承
      6. initAssetRegisters - 添加 component,directive,filter 静态方法 定义组件、指令、过滤器
----
+     
 ## 实例化Vue this._init(options)
----
+  + mergeOptions 合并选项
+  + initProxy 数据代理 
+  + initLifecycle 初始化生命周期
+  + initEvents 初始化组件事件 
+  + initRender 初始化渲染
+  + initState 构建响应式
+  + 
+
+## 实例挂载和模板编译 vm.$mount(vm.$options.el)
+
+## 渲染流程 vnode = _render.call(vm._renderProxy,$createElement)
+
+## diff算法
+  
