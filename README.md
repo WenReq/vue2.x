@@ -34,15 +34,15 @@
       4. watch 选项合并；最终和父类选项合并成数组，并且数组的选项成员，可以是回调函数，选项对象，或者函数名。
       5. props,methods,inject,computed 类似选项合并；如果父类不存在选项，则返回子类选项，子类父类都存在时，用子类选项去覆盖父类选项。
   + initProxy 数据代理 <br>
- 	为 vm 实例化对象添加了 _renderProxy 方法。拦截 with 语句下的作用对象,对非法没有定义的变量进行筛选判断。
+ 	&nbsp;&nbsp;为 vm 实例化对象添加了 _renderProxy 方法。拦截 with 语句下的作用对象,对非法没有定义的变量进行筛选判断。
   + initLifecycle 初始化生命周期 <br>
-  	为 vm 添加了$root、$parent、$children、$refs等属性。
+  	&nbsp;&nbsp;为 vm 添加了$root、$parent、$children、$refs等属性。
   + initEvents 初始化组件事件 <br>
-  	如果 vm.$options._parentListeners 事件存在，updateComponentListenets更新组件事件，添加新的事件，删除旧的事件。 <br>
-	updateListeners更新事件。add添加事件（1.once标志真调用$once 执行一次函数就解绑2.once标志为假，$on添加事件，把事件推进队列去vm._events[event]）
+  	&nbsp;&nbsp;如果 vm.$options._parentListeners 事件存在，updateComponentListenets更新组件事件，添加新的事件，删除旧的事件。 <br>
+	&nbsp;&nbsp;updateListeners更新事件。add添加事件（1.once标志真调用$once 执行一次函数就解绑2.once标志为假，$on添加事件，把事件推进队列去vm._events[event]）
   + initRender 初始化渲染 <br>
-  	为vm添加 _vnode、$slots、$scopedSlots等属性。添加了 _c 和 createElement 两个渲染方法。 <br>
-	并且把 $attrs 属性和 $listener 事件属性添加到 defineReactive 观察者中。
+  	&nbsp;&nbsp;为vm添加 _vnode、$slots、$scopedSlots等属性。添加了 _c 和 createElement 两个渲染方法。 <br>
+	&nbsp;&nbsp;并且把 $attrs 属性和 $listener 事件属性添加到 defineReactive 观察者中。
   + initState 构建响应式 <br>
 	* initProps 将props属性设置为响应式数据
 	* initMethods 必须为函数；命名不能props重复；不能_ $命名;挂载到根实例上。
@@ -53,20 +53,20 @@
 	*依赖收集的过程（每个数据都是一个依赖管理器，每个使用的数据就是一个依赖，当访问到数据时会将当前访问的场景作为一个依赖收集到依赖管理器中。）* <br>
 	*派发更新的过程 1.判断数据更改前后一致情况；2.新值为对象，对属性做依赖收集；3.通知该数据收集watcher依赖，遍历每个watcher，进行更新，调用dep.notify()；4.更新时将每个watcher推到队列中，下个tick进行run操作。5.执行run方法，执行get方法，重新计算新值，依赖的清除。* <br>
 ## 实例挂载和模板编译 vm.$mount(vm.$options.el) <br>
-  确认挂载节点 -》编译模板为render函数 -》render函数转换为virtualDom -》virtualDom创建真实节点 <br>
-  $mount -> mountComponent -> 实例化watcher -> updateComponent -> vm._render() -> vm._update() <br>
-  _render() 定义在renderMixin中，vnode = render.call(vm._renderProxy, vm.$createElement)。 <br>
+  &nbsp;&nbsp;确认挂载节点 -》编译模板为render函数 -》render函数转换为virtualDom -》virtualDom创建真实节点 <br>
+  &nbsp;&nbsp;$mount -> mountComponent -> 实例化watcher -> updateComponent -> vm._render() -> vm._update() <br>
+  &nbsp;&nbsp;_render() 定义在renderMixin中，vnode = render.call(vm._renderProxy, vm.$createElement)。 <br>
 **模板编译：** <br>
-  compileToFunctions 最终会返回另外两个包装过的属性 render,staticRenderFns,将with语法封装成执行函数（createCompiler 1.parse(把模板解析为AST抽象语法树) 2.optimize（优化AST，标记静态节点） 3.generate（根据不同平台将AST转为渲染函数））。
+  &nbsp;&nbsp;compileToFunctions 最终会返回另外两个包装过的属性 render,staticRenderFns,将with语法封装成执行函数（createCompiler 1.parse(把模板解析为AST抽象语法树) 2.optimize（优化AST，标记静态节点） 3.generate（根据不同平台将AST转为渲染函数））。
 ## 渲染流程 vnode = _render.call(vm._renderProxy,$createElement) <br>
-  _c 和 $createElement 在initRender 函数中定义。_c 是 template 内部模板编译成 render 函数时调用的方法。$createElement 是手写render函数调用的方法。<br>
-  通过模板生成的render函数 可以保证子节点都是Vnode；手写的render 需要数据规范校验和规范子节点children。通过 new Vnode() 生成完整的Vnode树。遇到子组件优先处理子组件的初始化。  <br>
-  updateComponent(){ vm._update(vm._render(), hydrating); } vm._update（定义在lifecycleMixin） 1.初始化渲染阶段 2.数据更新阶段。通过判断 vm._vnode 是否有旧节点来是初始渲染还是数据更新。  <br>
-  vm._update 核心是 __patch__ ,__patch__ = createPatchFunction 的返回值。核心是通过调用 createElm 方法进行 dom 操作，创建节点，插入子节点，递归创建一个完整的DOM树并插入到Body中。
+  &nbsp;&nbsp;_c 和 $createElement 在initRender 函数中定义。_c 是 template 内部模板编译成 render 函数时调用的方法。$createElement 是手写render函数调用的方法。<br>
+  &nbsp;&nbsp;通过模板生成的render函数 可以保证子节点都是Vnode；手写的render 需要数据规范校验和规范子节点children。通过 new Vnode() 生成完整的Vnode树。遇到子组件优先处理子组件的初始化。  <br>
+  &nbsp;&nbsp;updateComponent(){ vm._update(vm._render(), hydrating); } vm._update（定义在lifecycleMixin） 1.初始化渲染阶段 2.数据更新阶段。通过判断 vm._vnode 是否有旧节点来是初始渲染还是数据更新。  <br>
+  &nbsp;&nbsp;vm._update 核心是 __patch__ ,__patch__ = createPatchFunction 的返回值。核心是通过调用 createElm 方法进行 dom 操作，创建节点，插入子节点，递归创建一个完整的DOM树并插入到Body中。
   
 
 ## diff算法 <br>
-  原则：只进行同层节点的比较，节点不一致（_sameVnode），直接用新节点及其子节点替换旧节点。 <br>
+  &nbsp;&nbsp;原则：只进行同层节点的比较，节点不一致（_sameVnode），直接用新节点及其子节点替换旧节点。 <br>
   * patchVnode 是新旧 Vnode 对比的核心方法，对比的逻辑如下。
     - 节点相同，且节点除了拥有文本节点外没有其他子节点。这种情况下直接替换文本内容。
     + 新节点没有子节点，旧节点有子节点，则删除旧节点所有子节点。
