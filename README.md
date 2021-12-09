@@ -1,6 +1,7 @@
 # vue2.x 源码解析
 
 ## 为Vue prototype 原型添加方法
+
   **initMixin** 初始化：_init 实例化对象调用
   **stateMixin** 数据：$data,$props,$set,$delete,$watch
   **eventsMixin** 事件：$on,$off,$once,$emit
