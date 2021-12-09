@@ -15,7 +15,9 @@
 ## 为Vue添加静态属性和方法
   **initGlobalAPI**
      1. config 为Vue.config做层代理
-     2. Vue.util 工具类（提示警告、对象合并）
+     
+     
+     2. Vue.util 工具类（提示警告、对象合并）<br>
      3. 添加静态方法：Vue.set()更新视图、Vue.delete()删除数据、Vue.nextTick()用于更新视图后回调递归
      4. 添加静态属性：添加 components,directives,filters 静态对象，记录静态组件
      5. initUse - Vue.use() 安装插件、initMixin$1 - Vue.mixin() 合并参数、initExtend - Vue.extend() 继承
