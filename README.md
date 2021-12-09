@@ -52,8 +52,12 @@
 	`nitDate -> new Observer(options.data) -> this.walk(data) -> defineReactive(obj, keys[i]) -> new Dep(); Object.defineProperty(obj, key, {get() {// 做依赖的收集 dep.depend()},set(nval) {// 派发更新 dep.notify();})` <br>
 	*依赖收集的过程（每个数据都是一个依赖管理器，每个使用的数据就是一个依赖，当访问到数据时会将当前访问的场景作为一个依赖收集到依赖管理器中。）* <br>
 	*派发更新的过程 1.判断数据更改前后一致情况；2.新值为对象，对属性做依赖收集；3.通知该数据收集watcher依赖，遍历每个watcher，进行更新，调用dep.notify()；4.更新时将每个watcher推到队列中，下个tick进行run操作。5.执行run方法，执行get方法，重新计算新值，依赖的清除。* <br>
-## 实例挂载和模板编译 vm.$mount(vm.$options.el)
-
+## 实例挂载和模板编译 vm.$mount(vm.$options.el) <br>
+	确认挂载节点 -》编译模板为render函数 -》render函数转换为virtualDom -》virtualDom创建真实节点 <br>
+	$mount -> mountComponent -> 实例化watcher -> updateComponent -> vm._render() -> vm._update() <br>
+	_render() 定义在renderMixin中，vnode = render.call(vm._renderProxy, vm.$createElement)。 <br>
+	**模板编译：** <br>
+	compileToFunctions 最终会返回另外两个包装过的属性 render,staticRenderFns,将with语法封装成执行函数（createCompiler 1.parse(把模板解析为AST抽象语法树) 2.optimize（优化AST，标记静态节点） 3.generate（根据不同平台将AST转为渲染函数））。
 ## 渲染流程 vnode = _render.call(vm._renderProxy,$createElement)
 
 ## diff算法
