@@ -58,7 +58,12 @@
   _render() 定义在renderMixin中，vnode = render.call(vm._renderProxy, vm.$createElement)。 <br>
 **模板编译：** <br>
   compileToFunctions 最终会返回另外两个包装过的属性 render,staticRenderFns,将with语法封装成执行函数（createCompiler 1.parse(把模板解析为AST抽象语法树) 2.optimize（优化AST，标记静态节点） 3.generate（根据不同平台将AST转为渲染函数））。
-## 渲染流程 vnode = _render.call(vm._renderProxy,$createElement)
+## 渲染流程 vnode = _render.call(vm._renderProxy,$createElement) <br>
+  _c 和 $createElement 在initRender 函数中定义。_c 是 template 内部模板编译成 render 函数时调用的方法。$createElement 是手写render函数调用的方法。<br>
+  通过模板生成的render函数 可以保证子节点都是Vnode；手写的render 需要数据规范校验和规范子节点children。通过 new Vnode() 生成完整的Vnode树。遇到子组件优先处理子组件的初始化。  <br>
+  updateComponent(){ vm._update(vm._render(), hydrating); } vm._update（定义在lifecycleMixin） 1.初始化渲染阶段 2.数据更新阶段。通过判断 vm._vnode 是否有旧节点来是初始渲染还是数据更新。  <br>
+  vm._update 核心是 __patch__ ,__patch__ = createPatchFunction 的返回值。核心是通过调用 createElm 方法进行 dom 操作，创建节点，插入子节点，递归创建一个完整的DOM树并插入到Body中。
+  
 
 ## diff算法
   
