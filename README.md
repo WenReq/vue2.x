@@ -68,10 +68,10 @@
 ## diff算法 <br>
   原则：只进行同层节点的比较，节点不一致（_sameVnode），直接用新节点及其子节点替换旧节点。 <br>
   * patchVnode 是新旧 Vnode 对比的核心方法，对比的逻辑如下。
-    1. 节点相同，且节点除了拥有文本节点外没有其他子节点。这种情况下直接替换文本内容。
-    2. 新节点没有子节点，旧节点有子节点，则删除旧节点所有子节点。
-    3. 旧节点没有子节点，新节点有子节点，则用心的所有子节点去更新旧节点。
-    4. 新旧都存在子节点，则对比子节点内容做操作（updateChildren）。
+    - 节点相同，且节点除了拥有文本节点外没有其他子节点。这种情况下直接替换文本内容。
+    + 新节点没有子节点，旧节点有子节点，则删除旧节点所有子节点。
+    * 旧节点没有子节点，新节点有子节点，则用心的所有子节点去更新旧节点。
+    * 新旧都存在子节点，则对比子节点内容做操作（updateChildren）。
   * updateChildren
     1. 旧节点的起始位置为 oldStartIndex，截止位置 oldEndIndex，新节点的起始位置为 newStartIndex，截止位置为 newEndIndex。
     2. 新旧 children 的起始位置的元素两两对比，顺序是 newStartVnode,oldStartVnode; newEndVnode,oldEndVnode; newEndVnode,oldStartVnode; newStartVnode,oldEndVnode
