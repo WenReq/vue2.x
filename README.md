@@ -35,10 +35,15 @@
       5. props,methods,inject,computed 类似选项合并；如果父类不存在选项，则返回子类选项，子类父类都存在时，用子类选项去覆盖父类选项。
   + initProxy 数据代理 <br>
  	为 vm 实例化对象添加了 _renderProxy 方法。拦截 with 语句下的作用对象,对非法没有定义的变量进行筛选判断。
-  + initLifecycle 初始化生命周期
-  + initEvents 初始化组件事件 
-  + initRender 初始化渲染
-  + initState 构建响应式
+  + initLifecycle 初始化生命周期 <br>
+  	为 vm 添加了$root、$parent、$children、$refs等属性。
+  + initEvents 初始化组件事件 <br>
+  	如果 vm.$options._parentListeners 事件存在，updateComponentListenets更新组件事件，添加新的事件，删除旧的事件。 <br>
+	updateListeners更新事件。add添加事件（1.once标志真调用$once 执行一次函数就解绑2.once标志为假，$on添加事件，把事件推进队列去vm._events[event]）
+  + initRender 初始化渲染 <br>
+  	为vm添加 _vnode、$slots、$scopedSlots等属性。添加了 _c 和 createElement 两个渲染方法。 <br>
+	并且把 $attrs 属性和 $listener 事件属性添加到 defineReactive 观察者中。
+  + initState 构建响应式 <br>
 
 ## 实例挂载和模板编译 vm.$mount(vm.$options.el)
 
