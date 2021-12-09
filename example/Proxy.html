@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proxy</title>
+</head>
+<body>
+  <script>
+    var obj = {};
+    var newObj = new Proxy(obj,{
+      get(target, key, receiver){
+        console.log('获取值');
+        return Reflect.get(target, key, receiver);
+      },
+      set(target, key, value, receiver){
+        console.log('设置值');
+        return Reflect.set(target, key, value, receiver);
+      }
+    })
+    newObj.a = '代理';
+    console.log(obj);
+    console.log(obj.a);
+
+
+    var arr = [1,2,3];
+    let obj = new Proxy(arr,{
+      get(target, key, receiver){
+        console.log('获取数组');
+        return Reflect.get(target, key, receiver);
+      },
+      set(target, key, receiver){
+        console.log('设置数组');
+        return Reflect.set(target, key, receiver);
+      },
+    })
+    // 1.改变已存在索引的数据
+    obj[2] = 3;
+    // 2.push,unshift 添加数据
+    obj.push(4);
+    // result: 设置数组 * 2 (索引和length属性都会触发setter)
+    // 3.直接通过索引添加数组
+    obj[5] = 5;
+    console.log(obj);
+    // result: 设置数组 * 2 (索引和length属性都会触发setter)
+    // 4.删除数组元素
+    obj.splice(1,1);
+    console.log(obj);
+  </script>
+</body>
+</html>

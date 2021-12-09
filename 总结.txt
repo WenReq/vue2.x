@@ -1,0 +1,565 @@
+一、选项合并
+	Vue构造器: !(this instanceof Vue) warn(...) // 保证了无法直接通过Vue()去调用，只能通过new的方式去创建实例 this._init(options);
+	在构造函数的定义之后，有这样五个函数。添加原型属性和方法: 
+		// 定义Vue原型上的init方法(内部方法 - 实例化Vue时会执行的初始化代码) 
+		initMixin(Vue);
+		// 定义原型上跟数据相关的属性方法(代理$data、$props、$set、$delte、$watch的访问)
+		stateMixin(Vue);
+		//定义原型上跟事件相关的属性方法（$on、$once、$off、$emit）
+		eventsMixin(Vue);
+		// 定义原型上跟生命周期相关的方法（_update、$forceUpdate、$destroy）
+		lifecycleMixin(Vue);
+		// 定义渲染相关的函数（$nextTick、_render）
+		renderMixin(Vue);
+	initGlobalAPI添加静态属性和方法：
+		1.为源码里的config配置做一层代理，可以通过Vue.config拿到默认的配置，并且可以修改它的属性值
+		2.定义内部使用的工具方法，例如警告提示，对象合并等。
+		3.定义set,delet,nextTick方法，options静态属性（在该对象中添加components、directives、filters静态对象，记录静态组件），本质上原型上也有这些方法的定义。
+		4.对Vue.components,Vue.directive,Vue.filter的定义，这些是默认的资源选项
+		5.定义安装插件Vue.use()、合并参数Vue.mixin()、继承Vue.extend()方法
+		Vue.config、set,delet,nextTick、Vue.components,Vue.directive,Vue.filter、use()、mixin()、extend()//对象的合并
+	构造器的默认选项，四个默认配置选项：
+		组件选项component（keepAlive,transition,transitionGroup），指令directive（v-model,v-show）， 过滤器filter以及返回自身构造器的_base。
+	选项检查：
+		实例化Vue做的核心操作便是执行_init方法进行初始化。初始化操作会经过选项合并配置，初始化生命周期，初始化事件中心，乃至构建数据响应式系统等。
+		而关键的第一步就是对选项的合并。合并后的选项会挂载到实例的$options属性中。可以先在实例中通过this.$options访问最终的选项。
+		vm.$options = mergeOptions(resolveConstructorOptions(vm.constructor), // 返回Vue构造函数自身的配置项options || {},vm);
+		其中components,prop,inject,directive等都是检验的重点。
+		components规范检验：1.正则判断非法的标签 2.不能使用Vue自身自定义的组件名，html的保留标签。
+		props规范检验：形式：数组、对象形式；两种形式最终都会转换成对象的形式。规则：1.数组形式保证是字符串 2.非数组，非对象则判定props选项传递非法
+		inject的规范校验：。。。
+		directive的规范校验：。。。
+	以自定义选项策略优先，如果没有才会使用默认策略。
+		合并策略思路：
+			1.合并的子父配置都具有相同的选项，则只需要按照规定好的策略进行选项合并即可。
+			2.有子类配置选项则默认使用子类配置选项，没有则选择父类配置选项。
+		1.常规选项合并
+			el合并（el的合并策略是在保证选项只存在于根的Vue实例的情形下使用默认策略进行合并。）；
+			data合并。（mergeData方法的两个参数是父data选项和子data选项的结果，也就是两个data对象，从源码上看数据合并的原则是，将父类的数据整合到子类的数据选项中， 如若父类数据和子类数据冲突时，保留子类数据。如果对象有深层嵌套，则需要递归调用mergeData进行数据合并。）
+		2.自带资源选项合并（component,directive,filter）父类选项将以原型链的形式被处理。子类必须通过原型链才能查找并使用内置组件和内置指令。
+		3.生命周期钩子函数合并（子类和父类相同的选项将合并成数组，父类选项优先于子类选项执行。）
+		4.watch 选项合并（最终和父类选项合并成数组，并且数组的选项成员，可以是回调函数，选项对象，或者函数名。父类选项优先于子类选项执行。）
+		5.props,methods,inject,computed 类似选项合并（如果父类不存在选项，则返回子类选项，子类父类都存在时，用子类选项去覆盖父类选项。）
+	
+二、数据代理检测
+	Proxy 针对目标对象会创建一个新的实例对象，并将目标对象代理到新的实例对象上。我们只要通过操作新的实例对象就能间接的操作真正的目标对象了。
+	initProxy 这层代理会在模板渲染时对一些非法或者没有定义的变量进行筛选判断。
+	_render 函数会调用 vm._renderProxy; vnode = render.call(vm._renderProxy, vm.$createElement);
+	render 函数包装成 with 的执行语句，在执行 with 语句过程中，该作用域下变量的访问都会触发 has 钩子，这也是模板渲染时之所以会触发代理拦截的原因。
+	has钩子里面过滤 ' 模板使用未定义的变量 ' 和 ' 使用 $ _ 开头的变量 '。
+三、实例的挂载和模板编译
+	Runtime + Compiler
+		编译器会自动将模板字符串编译成渲染函数的代码,源码中就是render函数。
+	Runtime Only
+		1.我们在选项中通过手写render函数去定义渲染过程。
+		2.借助vue-loader这样的编译工具进行编译；vue-loader对.vue进行编译，交给插件去实现。
+	···
+	// 选项合并
+	vm.$options = mergeOptions(
+	  resolveConstructorOptions(vm.constructor),
+	  options || {},
+	  vm
+	);
+	// 数据代理
+	initProxy(vm);
+	// 初始化生命周期函数
+	initLifecycle(vm);
+	// 初始化事件处理
+	initEvents(vm);
+	// 定义渲染函数
+	initRender(vm);
+	// 构建响应式系统
+	initState(vm);
+	// 等等
+	···
+	if (vm.$options.el) {
+	  vm.$mount(vm.$options.el);
+	}
+	我们会在选项中传递template为属性的模板字符串，如<div></div>，最终这个模板字符串通过中间过程将其转成真实的DOM节点，并挂载到选项中el代表的根节点上完成视图渲染。这个中间过程就是接下来要分析的挂载流程。
+	一句话概括挂载过程：确认挂载节点，编译模板为 render 函数，render 函数转换 Virtual DOM，创建真实节点。
+	$mount挂载 -> mountComponent -> 实例化watcher -> updateComponent -> vm._render();//生成虚拟DOM vm._update;//生成真实DOM
+	模板编译：createCompileToFunctionFn 最终会返回另外两个包装过的属性 render,staticRenderFns, 他们的核心是将 with 语句封装成执行函数。1.parse（把模板解析成抽象的语法树）2.optimize（优化AST语法树）3.generate（根据不同平台将AST语法树转换成渲染函数）
+	实例在挂载阶段的完整流程，当我们传入选项进行实例化时，最终的目的是将选项渲染成页面真实的可视节点。这个选项有两个形式，
+	一个是以 template 模板字符串传入，另外一个是 手写 render 函数形式传入，不论哪种，最终会以 render 函数的形式参与挂载，render 是一个用函数封装好的 with 语句。渲染真实节点前需要将 render 函数解析成虚拟 DOM，虚拟 DOM 是 js 和真实 DOM 之间的桥梁。最终的 _update 过程让虚拟 DOM 渲染成真实节点。
+四、渲染流程
+	Vue在渲染机制的优化上，同样引进了virtual dom的概念，它是用Vnode这个构造函数去描述一个DOM节点。
+	vm._render() 方法是如何将 "render 函数" 转换为 "Virtual DOM" 的。
+	vnode = render.call(vm._renderProxy, vm.$createElement);
+	_render 函数的核心是 render.call(vm._renderProxy, vm.$createElement) 部分，vm._renderProxy 在数据代理分析过，本质上是为了做数据过滤检测，它也绑定了 render 函数执行时的this指向。 vm.$createElement 方法会作为 render 函数的参数传入。
+	初始化 _init 时，有一个 initRender 函数，它就是用来定义渲染函数方法的，其中就有 vm.$createElement 方法的定义，除了$createElement，_c 方法的定义也类似。其中 vm._c 是 template 内部编译成 render 函数时调用的方法，vm.$createElement 是手写 render 函数时调用的方法。两者的唯一区别仅仅是最后一个参数的不同。通过模板生成的 render 方法可以保证子节点都是 Vnode，而手写的 render 需要一些检验和转换。
+	- 数据规范检测
+		1. 用响应式对象做 data 属性
+		2. 当特殊属性 key 的值是为非字符串，非数字类型时
+		以上这些规范在创建 Vnode 节点之前发现并报错。
+	- 子节点 children 规范化
+		Virtual DOM tree 是由每个 Vnode 以树状形式拼成的虚拟 DOM 树，我们再转换真实节点时需要的就是这样一个完整的 Virtual DOM tree，因此我们需要保证每一个子节点都是 Vnode 类型，这里分两种场景分析。
+    · 模板编译 render 函数，理论上 template 模板通过编译生成的 render 函数都是 Vnode 类型，但是有一个例外，函数式组件返回的是一个数组（这个特殊例子，可以看函数式组件的文章解析），这个时候 Vue 的处理是将整个 children 拍平成一维数组。
+    · 用户定义 render 函数，这个时候又分为两种情况，一个是当 children 为文本节点时，这时候通过前面介绍的 createTextVNode 创建一个文本节点的 Vnode；另外一种相当复杂，当 children 中有 v-for 的时候会出现嵌套数组，这时候的处理逻辑是，遍历 children，对每个节点进行判断，如果依旧是数组，则继续递归调用，直到类型为基础类型时，调用 createTextVNode 方法转化为 Vnode。这样经过递归，children 也变成一个类型为 Vnode 的数组。
+	- 在数据检测和组件规范化后，接下来通过 new VNode() 便可以生成一颗完整的 VNode 树，注意在 _render 过程中会遇到子组件，这个时候会优先去做子组件的初始化。
+
+	虚拟 Vnode 映射成真实 DOM
+		回到 updateComponent 的最后一个过程，虚拟的 DOM 树在生成 virtual dom 后，会调用 Vue 原型上的 _update 方法，将虚拟 DOM 映射为真实的 DOM。从源码上可以知道，_update 的调用时机有两个，一个是发生在初始化渲染阶段，另外一个发生数据更新阶段。
+		vm._update 方法的定义在 lifecycleMixin 中。
+		vm._vnode // 通过是否有旧节点判断是初次渲染还是数据更新
+
+		_update 的核心是 __patch__ 方法，而 patch 方法又是 createPatchFunction 方法的返回值，cretePatchFunction 方法传递一个对象作为参数，对象拥有两个属性，nodeOps 和 modules，nodeOps 封装了一系列操作原生 DOM 对象的方法。而 modules 定义了模块的钩子函数。
+		createPatchFunction函数有一千多行代码，它的内部首先定义了一系列辅助的方法，而核心是通过调用 createElm 方法进行 dom 操作，创建节点，插入子节点，递归创建一个完整的DOM树并插入到Body中。并且在产生真实阶段阶段，会有diff算法来判断前后Vnode的差异，以求最小化改变真实阶段。
+		createPatchFunction的过程只需要先记住一些结论，函数内部会调用封装好的DOM api，根据Virtual DOM的结果去生成真实的节点。其中如果遇到组件Vnode时，会递归调用子组件的挂载过程。
+五、组件基础剖析
+	Vue中我们可以定义全局的组件，也可以定义局部的组件，全局组件需要进行全局注册，核心方法是 Vue.component,他需要在根组件实例化前进行声明注册，原因是我们需要在实例化前拿到组件的配置信息并合并到options.components选项中。注册的本质是调用 extend 创建一个子类构造器，全局和局部的不同是局部创建子类构造器是发生在创建子组件Vnode阶段。而创建子Vnode阶段最关键的一步是定义了很多内部使用的钩子。有了一个完整的Vnode tree接下来会进入真正DOM的生成，在这个阶段如果遇到子组件 Vnode 会进行子构造器的实例化，并完成子组件的挂载。递归完成子组件的挂载后，最终才又回到根组件的挂载。 
+
+	Vue.components 有两个参数，一个是需要祖册的组件名，另外一个是组件选项，如果第二个参数没有传递，则会直接返回注册过的组件选项。否则以为着需要对该组件进行注册，注册过程先会对组件名合法性进行检测，要求组件名不允许出现非法的标签，在经过组件名的合法性检测后，会调用 extend 方法为组件创建一个子类构造器，此时的 this.options._base 代表的就是 Vue 构造器。extend 方法的定义在介绍选项合并章节有重点介绍过，他会基于父类去创建一个子类，此时的父类是 Vue，并且创建过程子类会继承父类的方法，并会和父类的选项进行合并，最终返回一个子类构造器。
+	总结起来，全局注册组件就是 Vue 实例化前创建一个基于 Vue 的子类构造器，并将组件的信息加载到实例 options.components 对象中。
+
+	组件 Vnode 创建：
+		· 场景
+      Vue.component('test',{
+        template: '<span></span>'
+      })
+      var vm = new Vue({
+        el: '#app',
+        template: '<div><test></test></div>'
+      })
+    · 父 render 函数
+      function(){
+        with(this){ return _c('div',[_c('test')],1) }
+      }
+		· Vue 根实例初始化会执行 vm.$mount(vm.$options.el) 实例挂载的过程，按照之前的逻辑，完整的流程会经历 render 函数生成 Vnode，以及 Vnode 生成真实的 DOM 的过程。
+    · render 函数生成 Vnode 过程中，子会优先父执行生成 Vnode 过程，也就是 _c('test') 函数会先被执行。'test' 会先判断是普通的 html 标签还是组件的占位符。
+    · 如果为一般标签，会执行 new Vnode 过程，这也是上一章节我们分析的过程；如果是组件占位符，则会在判断组件已经被注册过的前提下进行 createComponent 创建子组件 Vnode 的过程。
+    · createComponent 是创建组件 Vnode 的过程，创建过程会再次合并选项配置，并安装组件相关内部钩子，最后通过 new Vnode() 生成以 vue-component 开头的 Virtual DOM
+    · render 函数执行过程也是一个循环递归调用创建 Vnode 的过程，执行 3,4 步之后，完整的生成一个包含各个子组件的 Vnode tree。
+	组件 Vnode 渲染真实 DOM：
+		1. 经过 vm._render() 生成完整的 Virtual DOM 树后，紧接着执行 Vnode 渲染真实 DOM 的过程，这个过程是 vm.update() 方法的执行，而核心是 vm.__patch__。
+		2. vm.__patch__ 内部会通过 createElm 去创建真实的 DOM 元素，期间遇到 Vnode 会递归调用 createElm 方法。
+		3. 递归调用过程中，判断该节点类型是否为组件类型，是通过 createComponent 方法判断的，该方法和渲染 VNode 阶段的方法 createComponent 不同，他会调用组件的 init 初始化钩子函数，并完成组件的 DOM 插入。
+		4. init 初始化钩子函数的核心是 new 实例化这个子组件并将子组件进行挂载，实例化子组件的过程又回到合并配置，初始化生命周期，初始化事件中心，初始化渲染的过程。实例挂载又会执行 $mount 过程。
+		5. 完成所有组件的实例化和节点挂载后，最后才回到根节点的挂载。
+
+    __patch__ 核心代码是通过 createElm 创建真实节点，当创建过程中遇到子 Vnode 时，会调用 createChildren，createChildren 的目的是对子 vnode 递归调用 createElm 创建子组件节点。
+		显然 Vnode 生成真实 DOM 的过程也是一个不断递归创建子节点的过程，patch 过程如果遇到 Vnode，会优先实例化子组件，并且执行子组件的挂载流程，而挂载流程又会回到 _render,_update 的过程。在所有的子 Vnode 递归挂载后，最终才会真正挂载到跟节点。
+	建立组件联系：
+		不管是父实例还是子实例，在初始化实例阶段有一个 initLifeCycle 的过程。这个过程会把当前实例添加到父实例的 $children 属性中，并设置自身的 $parent 属性指向父实例。
+
+六、组件的高级用法
+	异步组件和函数式组件。它们都是为了解决某些类型场景引入的高级组件用法。其中异步组件是首屏性能优化的一个解决方案，并且Vue提供了多达三种的使用方法，高级配置的用法更让异步组件的使用更加灵活。	
+七、响应式 - 上
+	数据的初始化(即initState(vm))，是对数据进行响应式设计的过程，会针对props,methods,data,computed和watch做数据的初始化处理，并将他们转换为响应式对象。
+	initProps：
+		1.父组件对传递值：父组件优先进行模板编译得到一个render函数，在解析过程中遇到子组件的属性。with(){..._c('child',{attrs:{"test":test}})} 把校验后的结果以propsData属性的形式传入Vnode构造器中。props传递给占位符组件的写法，会以propsData的形式作为子组件Vnode的属性存在。
+		props的命名规范：HTML对大小写是不敏感的，所有的浏览器会把大写字符解释为小写字符，因此我们在使用DOM中的模板时，cameCase(驼峰命名法)的props名需要使用其等价的 kebab-case (短横线分隔命名) 命代替。
+		2.调用createComponent去实例化子组件。最终会统一成{props: { test: { type: null }}}的写法。接着会调用initProps, initProps做的事情，简单概括一句话就是，将组件的props数据设置为响应式数据。
+	initMethods：
+		1.保证methods方法定义必须是函数，2.命名不能和props重复，3.不能以_ or $.这些Vue保留标志开头，4.最终会将定义的方法都挂载到根实例上。
+	initData：
+		1. 命名不能和方法、props重复
+		2. 数据代理，用户可直接通过vm实例返回data数据
+		3. observe(data, true /* asRootData */);
+	initComputed：
+		1. computed 属性为对象时，要保证有 getter 方法
+		2. 针对 computed 的每个属性，要创建一个监听的依赖，也就是实例化一个 watcher。
+		3. initComputed 也会将每个属性设置成响应式的数据。
+		4. 也会对 computed 的命名做检测，防止与 props,data 冲突。
+
+	数据的初始化 
+	this.initData(options);
+	实例的挂载
+	this.$mount(el);
+
+	initData -》 new Observer(options.data) -》 this.walk(data) -》 defineReactive(obj, keys[i]) -》 new Dep(); Object.defineProperty(obj, key, {get() {// 做依赖的收集 dep.depend()},set(nval) {// 派发更新 dep.notify();})
+  
+七、响应式 - 中
+	响应式系统的核心是利用 Object.defineProperty 对数据的 getter,setter 进行拦截处理，处理的核心是在访问数据是对数据所在场景的依赖进行收集，在数据发生更改时，通知收集过的依赖进行更新。
+	通俗的总结一下依赖收集的过程，每个数据就是一个依赖管理器，而每个使用数据的地方就是一个依赖。当访问到数据时，会将当前访问的场景作为一个依赖收集到依赖管理器中，同时也会为这个场景的依赖收集拥有的数据。
+	派发更新阶段会做以下几件事：
+		1.判断数据更改前后是否一致，如果数据相等则不进行任何派发更新操作。
+		2.新值为对象时，会对该值的属性进行依赖收集过程。
+		3.通知该数据收集的watcher依赖,遍历每个watcher进行数据更新,这个阶段是调用该数据依赖收集器的dep.notify方法进行更新的派发。
+		4.更新时会将每个watcher推到队列中，等待下一个tick到来时取出每个watcher进行run操作。
+			· 执行run操作会执行getter方法,也就是重新计算新值，针对渲染watcher而言，会重新执行updateComponent进行视图更新。updateComponent = function () {vm._update(vm._render(), hydrating);};
+			· 重新计算getter后，会进行依赖的清除
+七、响应式 - 下
+	由于Object.defineProperty自身的缺陷，无法对数组的新增删除进行拦截检测，因此Vue对数组进行了特殊处理，重写了数组的方法，并在方法中对数据进行拦截。
+		1. 数组方法的重写
+			 利用Object.defineProperty对方法的执行进行改写。def(arrayMethods, method, function mutator () {});
+			 initData阶段会为data数据创建一个Observer类，Observer hasProto 来决定执行protoAugment(value, arrayMethods);（原型指向）, copyAugment(value, arrayMethods, arrayKeys);（数据代理）过程。this.observeArray(value)。
+		2. 依赖收集
+			 由于是数组，拦截过程会做特殊处理。dependArray
+			 非基础类型时，递归实例化Observer，会为每个子属性设置响应式数据，最终返回Observer实例。
+			 访问到数组时，执行childOb.dep.depend();进行依赖收集，该 Observer 实例的 dep 属性会收集当前的 watcher 作为依赖保存，dependArray 保证了如果数组元素是数组或者对象，需要递归去为内部的元素收集相关的依赖。
+		3. 派发更新
+			 可以拦截的过程就是调用数组方法的时候。
+			 // 执行原数组方法
+       var result = original.apply(this, args);
+       var ob = this.__ob__;
+			 if (inserted) { ob.observeArray(inserted); } // 对每个元素进行依赖收集
+			 ob.dep.notify();
+			 return result
+			 数组的改变不会触发setter进行依赖更新，所以Vue创建了一个新的数组类，重写了数组的方法，将数组方法指向了新的数组类。同时在访问到数组时依旧触发getter进行依赖收集，在更改数组时，触发数组新方法运算，并进行依赖的派发。
+
+	nextTick的原理，利用浏览器的事件循环机制来达到最优的渲染时机。
+		Vue.nextTick( [callback, context] ); 当callback经过nextTick封装后，callback会在下一个tick中执行调用。timerFunc是真正将任务队列推到微任务队列中的函数。
+		1. 如果浏览器执行Promise,那么默认以Promsie将执行过程推到微任务队列中。
+			 flushCallbacks是异步更新的函数，他会取出callbacks数组的每一个任务，执行任务，
+		2. 不支持promise,支持 MutataionObserver
+		3. 如果不支持微任务方法，则会使用宏任务方法，setImmediate会先被使用
+		4. 所有方法都不适合，会使用宏任务方法中的setTimeout
+		当nextTick不传递任何参数时，可以作为一个promise用，例如：
+		nextTick().then(() => {})
+
+	watch在响应式设计的原理，用户自定义的watch会创建一个依赖，这个依赖在数据改变时会执行回调。
+		1. 依赖收集
+			 初始化数据会执行initWatch,initWatch的核心是createWatcher。
+			 无论是选项的形式，还是api的形式，最终都会调用实例的$watch方法，其中expOrFn是监听的字符串，handler是监听的回调函数，options是相关配置。
+			 vm.$watch(expOrFn, handler, options);
+			 $watch的核心是创建一个user watcher,options.user是当前用户定义watcher的标志。如果有immediate属性，则立即执行回调函数。 而实例化watcher时会执行一次getter求值，这时，user watcher会作为依赖被数据所收集。
+		2. 派发更新
+			 数据发生改变时，setter拦截对依赖进行更新，而此前user watcher已经被当成依赖收集了。这个时候依赖的更新就是回调函数的执行。
+
+八、diff 算法
+	从 render 函数到创建虚拟 Dom，再到渲染真实节点。引入虚拟 DOM 的核心在于数据发生变化时，如何最优化数据变动到视图的过程。这个过程才是 Vnode 更新视图的核心，也就是diff算法。
+	模拟渲染过程：需要创建一个类，模拟将 render 函数转换为 Vnode，并将 Vnode 渲染为真实 DOM 的过程。定义一个 Vn 的类， 这个类有两个基本的方法 createVnode 和 createElement 分别实现创建虚拟 Vnode，和创建真实 DOM 过程。
+	createVnode 模拟 vue中的render函数思路，将数据转换为虚拟的 Vnode。
+		// diff.js
+		(function(global) {
+			class Vn {
+				constructor() {}
+				// 创建虚拟Vnode
+				createVnode(tag, data, children) {
+					return new VNode(tag, data, children)
+				}
+			}
+			global.vn = new Vn()
+		}(this))
+
+		let createVnode = function() {
+			let _c = vn.createVnode;
+			return _c('div', { attrs: { id: 'test' } }, arr.map(a => _c(a.tag, {}, a.text)))
+		}
+
+	createElement 渲染真实 DOM 的过程就是遍历 Vnode 对象，递归创建真实节点的过程。
+		class Vn {
+			// 渲染真实节点
+			createElement(vnode, options) {
+				let _createElement = vnode => {
+					// 添加属性
+					this.setAttr(ele, data);
+					// 简单的文本节点，创建文本节点即可
+					if(util._isPrimitive(children)) { 
+						const testEle = document.createTextNode(children);
+						ele.appendChild(testEle) 
+					} else {
+						// 复杂的子节点需要遍历子节点递归创建节点
+						children.map(c => ele,appendChild(_createElement(c)))
+					}
+					return ele
+				}
+				document.querySelector(el).appendChild(_createElement(vnode));// 将创建好的节点添加到根节点下
+			}
+			// 为节点设置属性，利用DOM原生的setAttribute为每个节点设置属性值
+			setAttr (el,data) {
+				Object.keys(attrs).forEach(a => {
+					el.setAttribute(a, attrs[a]);
+				})
+			}
+		}
+		
+	至此一个简单的数据 => Virtual DOM => 真实 DOM 的模型搭建成功。
+
+	diff 算法的实现
+		算法比较节点不同时，只会进行同层节点的比较，不会跨层进行比较。
+			1. diffVnode。
+			// newVnode 表示改变后新的Vnode树
+			const newVnode = createVnode();
+			// diffVnode 会比较新旧 Vnode 树，并完成视图更新
+			vn.diffVnode(newVnode, oldVnode);
+
+			class Vn{
+				...
+				diffVnode(nVnode, oVnode) {
+					if (!this._sameVnode(nVnode, oVnode)) {
+						// 直接更新根节点及所有子节点
+						return ***
+					}
+					this.generateElm(vnode);
+					this.patchVnode(nVnode, oVnode);
+				},
+				// 1. 新旧节点的根节点不是同一节点，则直接替换
+				_sameVnode(n, o) {
+					return n.tag === o.tag;
+				},
+				// 2. 在旧节点的 Vnode 中跟踪到每个 Virtual DOM 的真实节点信息。
+				generateElm(vnode) {
+					const traverseTree = (v, parentEl) => { ... }
+					traverseTree(vnode, this.el);
+				}
+				// 3. patchVnode 是新旧 Vnode 对比的核心方法
+							1. 节点相同，且节点除了拥有文本节点外没有其他子节点，则直接替换文本内容。
+							2. 新节点没有子节点，旧节点有子节点，则删除旧节点所有子节点。
+							3. 旧节点没有子节点，新节点有子节点，则新子节点去更新旧子节点。
+							4. 新旧节点都存在子节点。则对比子节点内容做操作。updateChildren
+				// 4. 子节点对比
+					旧节点的起始位置为oldStartIndex,截至位置为oldEndIndex,新节点的起始位置为newStartIndex,截至位置为newEndIndex。
+					新旧children的起始位置的元素两两对比，顺序是 newStartVnode, oldStartVnode; newEndVnode, oldEndVnode; newEndVnode, oldStartVnode; newStartVnode, oldEndVnode
+					大致逻辑是：
+						1. newStartVnode, oldStartVnode节点相同，执行一次patchVnode过程，也就是递归对比相应子节点，并替换节点的过程。oldStartIndex，newStartIndex都像右移动一位。
+						2. newEndVnode, oldEndVnode节点相同，执行一次patchVnode过程，递归对比相应子节点，并替换节点。oldEndIndex， newEndIndex都像左移动一位。
+						3. newEndVnode, oldStartVnode节点相同，执行一次patchVnode过程，并将旧的oldStartVnode移动到尾部,oldStartIndex右移一味，newEndIndex左移一位。
+						4. newStartVnode, oldEndVnode节点相同，执行一次patchVnode过程，并将旧的oldEndVnode移动到头部,oldEndIndex左移一味，newStartIndex右移一位。
+						5. 四种组合都不相同，则会搜索旧节点所有子节点，找到将这个旧节点和newStartVnode执行patchVnode过程。
+						6. 不断对比的过程使得oldStartIndex不断逼近oldEndIndex，newStartIndex不断逼近newEndIndex。当oldEndIndex <= oldStartIndex说明旧节点已经遍历完了，此时只要批量增加新节点即可。当newEndIndex <= newStartIndex说明旧节点还有剩下，此时只要批量删除旧节点即可。
+				// 5. diff 算法优化
+					前面有个分支，当四种比较节点都找不到匹配时，会调用findIdxInOld找到旧节点中和新的比较节点一致的节点。节点搜索在数量级较大时是缓慢的。
+					查看Vue的源码，发现它在这一个环节做了优化，也就是我们经常在编写列表时被要求加入的唯一属性key，有了这个唯一的标志位，我们可以对旧节点建立简单的字典查询，只要有key值便可以方便的搜索到符合要求的旧节点。
+			}
+
+九、Vue 事件机制
+	1. 模板编译入口 var ast = parse(template.trim(), options); parse 通过拆分模板字符串，将其解析为一个 AST 树，其中对属性的处理，在 processAttr 中。
+		 通过 dirRE 匹配事件相关的正则，命中得到事件本身、回调、修饰符。
+		 最终通过 addHandler 方法，为 AST 树添加事件相关的属性（events 用来记录绑定的事件），对事件修饰符进行特殊处理。
+	2. 代码生成 var code = generate(ast, options); 核心在 genElement 中，它会根据不同指令类型处理不同分支。普通模板编译会进入 genDta 函数，genHandlers 函数会为 event 属性做逻辑处理。
+		 genHandlers 会遍历解析好的 AST 树，拿到 event 对象属性，并根据属性上的事件对象拼接成字符串。
+		 "_c('div',{attrs:{"id":"app"}},[_c('div',{on:{"click":function($event){$event.stopPropagation();return doThis($event)}}},[_v("点击")]),_v(" "),_c('span',[_v(_s(count))])])"
+	3. 事件绑定 真正事件绑定还是离不开绑定注册事件。绑定注册事件它发生在组件挂载的节点。
+		 有了 Vnode，接下来会遍历子节点递归调用 createElm 为每个子节点创建真实的 DOM，由于 Vnode 中有 data 属性，在创建真实 DOM 时会进行注册相关钩子的过程，其中一个就是注册事件相关的处理。
+		 // 针对指令的处理
+		 invokeCreateHooks(vnode, insertedVnodeQueue);
+		 invokeCreateHooks 就是一个模板指令处理的任务，它分别针对不同的指令为真实阶段创建不同的任务。针对事件，会调用 updateDOMListeners 对真实 DOM 节点注册事件任务。
+		 normalizeEvents 对事件兼容性的处理。
+		 updateDOMListeners 会遍历 on 事件对新节点绑定注册，旧节点移除事件监听。 add 和 remove 是真正在 DOM 上绑定和解绑事件的过程，他的实现也是利用了原生 DOM 的 addEventListener, removeEventListener api。
+	4. 自定义事件
+		 模板编译：addHandler 遇到 native 修饰符式，会添加到 nativeEvents 属性中。
+		 代码生成：genHandlers 用来处理事件对象并拼接字符串，处理组件原生事件和自定义事件的区别在isNative选项上。
+		 					with(this){return _c('div',{attrs:{"id":"app"}},[_c('child',{on:{"myevent":myevent},nativeOn:{"click":function($event){return nativeClick($event)}}})],1)}
+							有了 render 函数接下来会根据它创建 Vnode 实例，其中遇到组件占位符节点时会创建子组件 Vnode，此时为 on,nativeOn 做一层特殊转换，将 nativeOn 赋值给 on，这样后续的处理和普通节点一致。另外，将 on 赋值给 listeners，在创建 VNode 时以组件配置 componentOptions 传入。
+							// 创建子组件过程
+							function createComponent (){
+								...
+								var listeners = data.on;
+								data.on = data.nativeOn;
+								...
+								// 创建子vnode，其中父保留的children属性会以选项的形式传递给Vnode
+								var vnode = new VNode(
+									("vue-component-" + (Ctor.cid) + (name ? ("-" + name) : '')),
+									data, undefined, undefined, undefined, context,
+									{ Ctor: Ctor, propsData: propsData, listeners: listeners, tag: tag, children: children },
+									asyncFactory
+								);
+
+								return vnode
+							}
+		 子组件实例：接下来是通过 Vnode 生成真实节点的过程，这个过程遇到子 Vnode 会实例化子组件实例。
+		 						Vue.prototype._init = function(options) {
+									...
+									// 针对子组件的事件处理逻辑
+									if(options && options._isComponent) { 
+										// 初始化内部组件
+										initInternalComponent(vm, options);
+									} else {
+										// 选项合并，将合并后的选项赋值给实例的 $options 属性
+										vm.$options = mergeOptions( resolveConstructorOptions(vm.constructor), options || {}, vm );
+									}
+									// 初始化事件处理
+									initEvents(vm);
+								}
+
+								function initInternalComponent(vm, options){
+									var opts = vm.$options = Object.create(vm.constructor.options);
+									...
+									opts._parentListeners = vnodeComponentOptions.listeners;
+									...
+								}
+								此时，子组件拿到了父占位符节点定义的 @myevent="myevent" 事件。接下来进行子组件的初始化事件处理，此时 vm.$options._parentListeners 会拿到父组件自定义的事件。而带有自定义事件的组件执行 updateComponentListeners 函数。
+								function initEvents (vm) {
+									var listeners = vm.$options._parentListeners;
+									if(listeners){
+										// 带有自定义事件属性的实例
+										updateComponentListeners(vm, listeners);
+									}
+								}
+								回到了之前分析的updateListeners过程，和原生DOM事件不同的是，自定义事件的添加移除的方法不同。
+								function updateComponentListeners (vm,listeners,oldListeners) {
+									target = vm;
+									updateListeners(listeners, oldListeners || {}, add, remove$1, createOnceHandler, vm);
+									target = undefined;
+								}
+
+								// $on方法用来监听事件，执行回调
+								// $once方法用来监听一次事件，执行回调
+								// $off方法用来解除事件监听
+								// $emit方法用来触发事件，执行回调
+								// 找到已经监听事件的回调，执行
+
+								从分析结果可以看出，之所以有子父组件通信的效果，原因仅仅是因为回调函数写在了父组件中。
+十、Vue 插槽
+	1. 父组件处理。在创建子 Vnode 过程中， createComponent 函数中VNode，会以组件配置 componentOptions 传入 Vnode 构造器中。
+		 最终 VNode 中父组件需要分发的内容以 componentOptions 属性的形式存在。
+	2. 子组件流程。子组件会调用 initInternalComponent 方法拿到父组件拥有的相关配置信息，并赋值给子组件自身的配置选项。
+		 最终在子组件实例的配置中拿到了父组件保存的分发内容，记录在组件实例 $options._renderChildren 中。
+	3. 子组件实例化进入 initRender 阶段，这个过程会将配置的 _renderChildren 属性做规范化处理，并将它赋值给子实例上的 $slot 属性。
+	4. 随后子组件也会走挂载的流程，同样会经历template模板到render函数，再到Vnode，最后渲染真实 DOM 的过程。解析 AST 阶段，slot 标签和其他标签的处理相同，不同之处在于 AST 生成 render 函数阶段，对 slot 标签的处理，会使用 _t 函数进行包裹。
+		 最终子组件的 render 函数为："with(this){return _c('div',{staticClass:"child"},[_t("default")],2)}" // 核心generate-genElement-genSlot原理
+	5. 到了子组件渲染为 Vnode 的过程。render 函数执行阶段会执行 _t() 函数，_t 函数是 renderSlot 函数简写，它会在 Vnode 树中进行分发内容的替换。
+
+十一、v-model 的语法糖
+	为什么说 v-model 是一个语法糖，从 render 函数的最终结果可以看出，它最终以两部分形式存在于 input 标签中，一个是将 value1 以 props 的形式存在(domProps) 中，另外一个是以事件的形式存储 input 事件，并保留在 on 属性中。
+	重要的一个关键，事件用 $event.target.composing 属性来保证不会在输入法组合文字过程中更新数据。
+	- patch真实节点
+		有了Vnode之后紧接着会执行patchVnode,patchVnode过程是一个真实节点创建的过程，其中的关键是createElm方法。
+		function createElm() { 
+			// 针对指令的处理
+			if (isDef(data)) {
+				invokeCreateHooks(vnode, insertedVnodeQueue);
+			}
+		}
+		invokeCreateHooks 会调用定义好的钩子函数，对 vnode 上定义的属性、指令、事件等进行真实DOM的处理，步骤包括以下：
+			1. updateDOMProps 会利用 vnode data 上的 domProps 更新 input 标签的 value 值；
+			2. updateAttr 会利用 vnode data 上的 attrs 属性更新节点属性值；
+			3. updateDOMListeners 利用 vnode data 上的 on 属性添加事件监听。
+		因此 v-model 语法糖最终反应的结果，是通过监听表单控件自身的 input 事件（其他类型有不同的监听事件类型），去影响自身的 value 值。如果没有 v-model 的语法糖，我们可以这样写：<input type="text" :value="message" @input="(e) => { this.message = e.target.value }">
+
+	- 语法糖的背后
+		它会在事件处理这一层添加新的事件监听compositionstart,compositionend，他们会分别在语言输入的开始和结束时监听到变化
+
+十二、动态组件
+	动态组件其中的核心是 component 标签和 is 属性的使用。
+	- AST 解析
+		标签上 is 属性的存在，它会在最终的 ast 树上打上 component 属性的标志。
+	- render 函数
+		genElement // 动态组件分支 code = genComponent(el.component, el, state);
+		针对动态组件的处理逻辑其实很简单，当没有内联模板标志时(后面会讲),拿到后续的子节点进行拼接，和普通组件唯一的区别在于，_c的第一个参数不再是一个指定的字符串，而是一个代表组件的变量。
+	- 普通组件和动态组件的对比
+		普通组件的 render 函数 "with(this){return _c('div',{attrs:{"id":"app"}},[_c('child1',[_v(_s(test))])],1)}"
+		动态组件的 render 函数 "with(this){return _c('div',{attrs:{"id":"app"}},[_c(chooseTabs,{tag:"component"})],1)}"
+			1. ast 阶段新增了 component 属性，这个是动态组件的标志。
+			2. 产生 render 函数阶段由于 component 属性的存在，会执行 genComponent 分支，genComponent 会针对动态组件的执行函数进行特殊的处理，和普通组件不同的是，_c 的第一参数不再是不变的字符串，而是执行的组件名变量。
+			3. render 到 vnode 阶段和普通组件的流程相同，只是字符串换成了变量，并有 { tag: 'component' } 的 data 属性。例子中 chooseTabs 此时取的是 child1
+	
+	内联模板：由于动态组件除了有is作为传值外，还可以有inline-template作为配置。
+
+	内置组件
+		vue的官方文档有对内置组件进行了列举，分别是component, transition, transition-group, keep-alive, slot，其中<slot>我们在插槽这一节已经详细介绍过，而component的使用这一节也花了大量的篇幅从使用到原理进行了分析。然而学习了slot,component之后，我开始意识到slot和component并不是真正的内置组件。内置组件是已经在源码初始化阶段就全局注册好的组件。而<slot>和<component>并没有被当成一个组件去处理，因此也没有组件的生命周期。slot只会在render函数阶段转换成renderSlot函数进行处理，而component也只是借助is属性将createElement的第一个参数从字符串转换为变量，仅此而已。因此重新回到概念的理解，内置组件是源码自身提供的组件，所以这一部分内容的重点，会放在内置组件是什么时候注册的，编译时有哪些不同这两个问题上来。
+
+		Vue.components = {
+			keepAlive: {},
+			transition: {},
+			transition-group: {},
+		}
+
+		- 注册内置组件
+			Vue实例在初始化过程中，最重要的第一步是进行选项的合并，而像内置组件这些资源类选项会有专门的选项合并策略，最终构造器上的组件选项会以原型链的形式注册到实例的compoonents选项中(指令和过滤器同理)。
+			// 资源选项
+			var ASSET_TYPES = [
+				'component',
+				'directive',
+				'filter'
+			];
+
+			// 定义资源合并的策略
+			ASSET_TYPES.forEach(function (type) {
+				strats[type + 's'] = mergeAssets; // 定义默认策略
+			});
+
+			function mergeAssets (parentVal,childVal,vm,key) {
+					var res = Object.create(parentVal || null); // 以parentVal为原型创建一个空对象
+					if (childVal) {
+						assertObjectType(key, childVal, vm); // components,filters,directives选项必须为对象
+						return extend(res, childVal) // 子类选项赋值给空对象
+					} else {
+						return res
+					}
+				}
+	
+	小结：
+		这节我们详细的介绍了动态组件的原理，我们经常使用 <component :is=""> 已达到不同组件切换的目的，实际上是由于 is 这个关键字让模板编译成 render 函数时，组件 render 的标签是变量，这样在渲染阶段，随着数据的不同会渲染不同的组件。动态组件还有一种用法是使用内联模板去访问在子组件的数据，这又增加了一种父组件通信的方法。但是官方并不建议我们这样做，因为内联模板会让作用域变得混乱。内联组件实现父子通信的原理是它让父组件的编译过程放到了子组件，这样顺利成章的父组件就可以访问到子组件的变量。文章的最后引出了内置组件，Vue 中真正的内置组件只有 keep-alive,transition,transition-group 三种， 他们本质上是在内部定义好组件选项，并进行全局注册。
+
+十三、keep-alive 的魔法上
+	* 从模板编译到生成vnode
+		内置组件和普通组件的编译过程没有区别，本质上组件在模板编译成 render 函数的处理是一致的。
+		keep-alive 的 render 函数的结果如下：
+			with(this){···_c('keep-alive',{attrs:{"include":"child2"}},[_c(chooseTabs,{tag:"component"})],1)}
+
+		有了 render 函数，接下来从子开始到父会执行生成 Vnode 对象的过程。_c('keep-alive'...) 的处理，会执行 createElement 生成组件 Vnode，其中由于 keep-alive 是组件，所以会调用 createComponent 函数去创建子组件 Vnode。
+
+		createComponent之前也有分析过，这个环节和创建普通组件Vnode不同之处在于，keep-alive的Vnode会剔除多余的属性内容，由于keep-alive除了slot属性之外，其他属性在组件内部并没有意义，例如class样式，<keep-alive clas="test"></keep-alive>等，所以在Vnode层剔除掉多余的属性是有意义的。而<keep-alive slot="test">的写法在2.6以上的版本也已经被废弃。
+			// 创建子组件Vnode过程
+			function createComponent(Ctordata, context, children, tag) {
+				// abstract 是内置组件（抽象组件）的标志 
+				if (isTrue(Ctor.options.abstract)) {
+					// 只保留slot属性，其他标签属性都被移除，在vnode对象上不再存在
+					var slot = data.slot;
+					data = {};
+					if(slot){
+						data.slot = slot;
+					}
+				}
+			}
+
+	* 初次渲染
+		keep-alive之所以特别，是因为它不会重复渲染相同的组件，只会利用初次渲染保留的缓存去更新节点。所以为了全面了解它的实现原理，我们需要从keep-alive的首次渲染开始说起。
+		如果忽略步骤的分析，只对初次渲染流程做一个总结：内置的keep-alive组件，让子组件在第一次渲染的时候将vnode和真实的elm进行了缓存。
+
+	* 抽象组件
+		Vue 提供的内置组件都有一个描述组件类型的选项，这个选项就是 { abstract: true } 它表明了该组件时抽象组件。
+			1. 抽象组件没有真实的节点，它在组件渲染阶段不会去解析渲染成真实的 dom 节点，而只是作为中间的数据过渡层处理。在 keep-alive 中是对组件缓存的处理。
+			2. 在我们介绍组件初始化的时候曾经说到父子组件会显式的建立一层关系，这层关系奠定了父子组件之间通信的基础。
+				Vue.prototype._init = function() {
+						···
+						var vm = this;
+						initLifecycle(vm)
+				}
+				function initLifeCycle (vm) {
+					var options = vm.$options;
+					var parent = options.parent;
+					if (parent && !options.abstract) {
+						// 如果有 abstract 属性，一致往上层寻找，直到不是抽象组件
+						while (parent.$options.abstract && parent.$parent) {
+							parent = parent.$parent;
+						}
+						parent.$children.push(vm);
+					}
+					...
+				}
+
+				子组件在注册阶段会把父实例挂载到自身选项的 parent 属性上，在 initLifeCycle 过程中，会反向拿到 parent 上的父组件 vnode，并为其 $children 属性添加该子组件 vnode，如果在反向找父组件的过程中，父组件拥有 abstract 属性，即可判定该组件为抽象组件，此时利用 parent 的链条往上寻找，知道找到组件不是抽象组件为止。initLifecycle 的处理，让每个组件都能找到上层的父组件以及下层的子组件，使得组件形成一个紧密的关系树。
+
+	小结：
+		这一节介绍了 Vue 内置组件中一个最重要的，也是常用的组件 keep-alive ，在日常开发中，我们经常讲 keep-alive 配合动态组件 is 使用，达到切换组件的同时，将旧的组件缓存。最终达到保留初始状态的目的。在第一次组件渲染时，keep-alive 会将组件 Vnode 以及对应的真实节点进行缓存。而当再次渲染组件时，keep-alive 是如何利用这些缓存的？并且 keep-alive 组件的生命周期又包括哪些？
+
+十三、keep-alive 的魔法下
+	初始化渲染流程最关键的一步是对渲染的组件 Vnode 进行缓存，其中包括了组件的真实节点储存。有了第一次的缓存，再次渲染组件时，keep-alive 又拥有哪些魔法呢？
+
+* 准备工作
+	1. keep-alive 是源码内部定义的组件选项配置，它会先注册为全局组件供开发者全局使用，其中 render 函数定义了它的渲染过程。
+	2. 和普通组件一致，当父在创建真实节点的过程中，遇到 keep-alive 的组件会进行组件的初始化和实例化。
+	3. 实例化会执行挂载 $mount 的过程，这一步会执行 keep-alive 选项中的 render 函数。
+	4. render 函数在初始化渲染时，会将渲染的子 Vnode 进行缓存。同时对应的子真实节点也会被缓存起来。
+	当再次需要渲染到已经渲染过的组件时，keep-alive 的处理又有什么不同呢？
+
+	- 基础使用
+	- 流程图
+		keep-alive再次渲染流程图
+* 流程分析
+	- 重新渲染组件
+		再次渲染，执行父组件的vm._update(vm._render(), hydrating);子组件执行 prepatch 钩子。
+		执行prepatch钩子时会拿到新旧组件的实例并执行updateChildComponent函数。而updateChildComponent会对针对新的组件实例对旧实例进行状态的更新，包括props,listeners等，最终会调用vue提供的全局vm.$forceUpdate()方法进行实例的重新渲染。
+	- 重用缓存组件
+		由于 vm.$forceUpdate() 会强迫 keep-alive 组件进行重新渲染，因此 keep-alive 组件会再一次执行 render 过程。这一次由于第一次对 vnode 的缓存，keep-alive 在实例的 cache 对象中找到了缓存的组件。
+		直接通过 cache[key] 取出缓存的组件实例并赋值给 vnode 的 componentInstance 属性。
+	- 真实节点的替换
+		由于在第一次渲染时对组件进行了标记vnode.data.keepAlive = true;,所以isReactivated的值为true,i.init依旧会执行子组件的初始化过程。
+		因为有keepAlive的标志，所以子组件不再走挂载流程，只是执行prepatch钩子对组件状态进行更新。并且很好的利用了缓存vnode之前保留的真实节点进行节点的替换。
+* 生命周期
+	在我们从child1切换到child2,再切回child1过程中，chil1不会再执行mounted钩子，只会执行activated钩子，而child2也不会执行destoryed钩子，只会执行deactivated钩子，这是为什么？child2的deactivated钩子又要比child1的activated提前执行，这又是为什么？
+	- deactivated
+	- activated
+		现在回过头看看 activated 的执行时机，同样是 patch 过程，在对旧节点移除并执行销毁或者停用的钩子后，对新节点也会执行对应的钩子。这也是停用的钩子比启用的钩子选执行的原因。
+* 缓存优化 - LRU
+	程序的内存空间是有限的，所以我们无法无节制的对数据进行存储，这时候需要有策略去淘汰不那么重要的数据，保持最大数据存储量的一致。这种类型的策略称为缓存优化策略，根据淘汰的机制不同，常用的有以下三类。
+	1. FIFO 先进先出策略。我们通过记录数据使用的时间，当缓存大小即将溢出时，优先清除离当前时间最远的数据。
+	2. LRU	最近最少使用。LRU 策略遵循的原则是，如果数据最近被访问过，那么将来被访问的几率更高，如果以一个数组去记录数据，当有一数据被访问时，该数据会被移动到数组的尾部，表明最近被使用过，当缓存溢出时，会删除数组头部数据，即将最不频繁使用的数据移除。
+	3. LFU	计数最少策略。用次数去标记数据使用频率，次数最少的会在缓存溢出时被淘汰。
+	
+			
+
+

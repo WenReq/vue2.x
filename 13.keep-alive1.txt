@@ -1,0 +1,31 @@
+流程图大致覆盖了初始渲染 keep-alive 所执行的过程。
+			1、和渲染普通组件相同的是，Vue会拿到前面生成的Vnode对象执行真实节点创建的过程，也就是熟悉的patch过程,patch执行阶段会调用createElm创建真实dom，在创建节点途中，keep-alive的vnode对象会被认定是一个组件Vnode,因此针对组件Vnode又会执行createComponent函数，它会对keep-alive组件进行初始化和实例化。
+			2、keep-alive组件会先调用内部钩子init方法进行初始化操作，我们先看看init过程做了什么操作。
+				 第一次执行，很明显组件vnode没有componentInstance属性，vnode.data.keepAlive也没有值，所以会调用createComponentInstanceForVnode方法进行组件实例化并将组件实例赋值给vnode的componentInstance属性， 最终执行组件实例的$mount方法进行实例挂载。
+				 createComponentInstanceForVnode就是组件实例化的过程，而组件实例化从系列的第一篇就开始说了，无非就是一系列选项合并，初始化事件，生命周期等初始化操作。
+
+		- 内置组件选项
+			我们在使用组件的时候经常利用对象的形式定义组件选项，包括data,method,computed等，并在父组件或根组件中注册。keep-alive同样遵循这个道理，内置两字也说明了keep-alive是在Vue源码中内置好的选项配置，并且也已经注册到全局，这一部分的源码可以参考组态组件小节末尾对内置组件构造器和注册过程的介绍。这一部分我们重点关注一下keep-alive的具体选项。（include、exclude、max）;对include exclue的监听;keep-alive的渲染函数;为缓存组件打上标志;将渲染的vnode返回。
+			keep-alive选项跟我们平时写的组件选项还是基本类似的，唯一的不同是keep-ailve组件没有用template而是使用render函数。keep-alive本质上只是存缓存和拿缓存的过程，并没有实际的节点渲染，所以使用render处理是最优的选择。
+
+		- 缓存 vnode
+			还是先回到流程图的分析。上面说到keep-alive在执行组件实例化之后会进行组件的挂载。而挂载$mount又回到vm._render(),vm._update()的过程。由于keep-alive拥有render函数，所以我们可以直接将焦点放在render函数的实现上。
+				· 首先是获取keep-alive下插槽的内容，也就是keep-alive需要渲染的子组件,例子中是chil1 Vnode对象，源码中对应getFirstComponentChild函数。 
+				· 判断组件满足缓存的匹配条件，在keep-alive组件的使用过程中，Vue源码允许我们是用include, exclude来定义匹配条件，include规定了只有名称匹配的组件才会被缓存，exclude规定了任何名称匹配的组件都不会被缓存。更者，我们可以使用max来限制可以缓存多少匹配实例，而为什么要做数量的限制呢？我们后文会提到。
+				拿到子组件的实例后，我们需要先进行是否满足匹配条件的判断,其中匹配的规则允许使用数组，字符串，正则的形式。
+				如果组件不满足缓存的要求，则直接返回组件的vnode,不做任何处理,此时组件会进入正常的挂载环节。
+					1、 render 函数执行的关键一步是缓存 Vnode，由于是第一次执行 render 函数，选项中的 cache 和 keys 数据都没有值，其中 cache 是一个空对象，我们将用它来缓存 { name: vnode } 枚举，而 keys 我们用来缓存组件名。因此我们在第一次渲染 keep-alive 时，会将需要渲染的子组件 vnode 进行缓存。
+					cache[key] = node;
+					keys.push(key);
+					2、将已经缓存的 vnode 打上标记，并将子组件的 vnode 返回。vnode.data.keepAlive = true;
+		
+		- 真实节点的保存
+			我们再回到createComponent的逻辑，之前提到createComponent会先执行keep-alive组件的初始化流程，也包括了子组件的挂载。并且我们通过componentInstance拿到了keep-alive组件的实例，而接下来重要的一步是将真实的dom保存再vnode中。
+				createComponent -》 保留真实dom到vnode中 initComponent -》 将真实节点添加到父节点中 insert
+			initComponent关键步骤的逻辑。
+				// vnode保留真实节点
+    		vnode.elm = vnode.componentInstance.$el;
+		
+		因此，我们很清晰的回到之前遗留下来的问题，为什么keep-alive需要一个max来限制缓存组件的数量。原因就是keep-alive缓存的组件数据除了包括vnode这一描述对象外，还保留着真实的dom节点,而我们知道真实节点对象是庞大的，所以大量保留缓存组件是耗费性能的。因此我们需要严格控制缓存的组件数量，而在缓存策略上也需要做优化，这点我们在下一篇文章也继续提到。
+
+		由于isReactivated为false,reactivateComponent函数也不会执行。至此keep-alive的初次渲染流程分析完毕。

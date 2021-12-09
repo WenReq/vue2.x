@@ -1,0 +1,266 @@
+2021.10.18的总结
+	Vue 选项配置
+	Vue 构造器：保证只能通过 new 实例的形式去调用。this instanceof Vue
+	定义原型上方法：initMixin、stateMixin、eventsMixin、lifecycleMixin、renderMixin。
+								initMixin 定义了内部在实例化Vue时会执行的初始化代码。function initMixin (Vue) {Vue.prototype._init = function (options) {}}
+								stateMixin 定义跟数据相关的属性方法。this.$data和this.$props访问到data,props的值,定义了使用频率较高的this.$set,this.$delte等方法。
+								eventsMixin 定义原型上的事件相关方法。vm.$on,vm.$once,vm.$off,vm.$emit
+								lifecycleMixin 定义了生命周期渲染的方法。_update、$forceUpdate、$destroy
+								renderMixin 定义原型上跟渲染相关的方法。$nextTick、_render
+	定义静态属性方法：initGlobalAPI 中定义的 config、set、delet、nextTick、默认资源选项（components、directive,filter）、use、mixin、extend。
+	构造器默认选项：4个默认选项，component，directive，filter 以及返回自身构造器的 _base。
+	选项检测：初始化操作会经过选项合并配置，初始化生命周期，初始化事件中心，乃至构建数据响应式系统等。关键的第一步就是对选项的合并，合并后的选项会挂载到实例的 $options 属性上。
+			 选项合并的重点是将用户自身传递的 options 选项和 Vue 构造器函数自身的选项配置合并。
+			 在合并选项之前，很大的一部分工作是对选项的校验。其中 components,prop,inject,directive 等都是校验的重点。
+			 checkComponents(child); // components 的校验和规范化
+			 normalizeProps(child,vm); normalizeInject(child,vm); normalizeDirectives(child,vm); // props,inject,directives 的校验和规范化
+	合并策略：1.Vue 针对每个规则的选项都有定义好的合并策略，例如 data,component,mounted 等。如果合并的子父配置都具有相同的选项，则只需要按照规定好的策略进行选项合并即可。
+			 2.由于 Vue 传递的选项是开放式的，所以也存在传递的选项没有自定义选项的情况，这时候由于选项不存在默认的合并策略，所以处理的原则是有子类配置选项则默认使用子类配置选项，没有则选择父类配置选项。
+			以自定义选项策略优先，如果没有才会使用默认策略。
+			用户自定义选项策略遵循思路：自配置存在则取自配置，不存在则取父配置，即用子去覆盖父。
+
+			1.常规选项合并（el合并；data合并。）
+			2.自带资源选项合并（component,directive,filter）
+			3.生命周期钩子函数合并（父类选项优先于子类选项执行。）
+			4.watch 选项合并（最终和父类选项合并成数组）
+			5.props,methods,inject,computed 类似选项合并（如果父类不存在选项，则返回子类选项，子类父类都存在时，用子类选项去覆盖父类选项。）
+
+
+vue2.0源码-丰富的选项合并策略：
+	* Vue的引入
+		1、Vue构造器
+			Vue 的本质是一个构造器，并且它保证了只能通过 new 实例的形式去调用，而不能直接通过函数的形式使用。
+			if(!(this instanceof Vue)){ warn('Vue is a constructor and should be called with the `new` keyword'); }this._init(options);
+		2、定义原型属性方法
+			在构造函数的定义之后，有这样五个函数，他们分别针对不同场景定义了 Vue 原型上的属性和方法。
+			// 1.定义Vue原型上的init方法（内部方法）
+			initMixin(Vue); // 定义了内部在实例化 Vue 时会执行的初始化代码。
+			// 2.定义原型上跟数据相关的属性方法
+			stateMixin(Vue); // 定义了跟数据相关的属性方法。如：this.$data、this.$props、this.$set、this.delte 等方法。
+			// 3.定义原型上跟事件相关的属性方法
+			eventsMixin(Vue); // 定义了原型上的相关事件，如：vm.$on、vm.$once、vm.$off、vm.$emit 等事件。
+			// 4.定义原型上跟生命周期相关的方法
+			lifecycleMixin(vue); // _update、$forceUpdate、$destroy
+			// 5.定义渲染相关的函数
+			renderMixin(Vue); // $nextTick、_render
+			
+			lifecycleMixin,renderMixin 两个都可以算是对生命周期渲染方法的定义，例如 $forceUpdate 触发实例强制刷新，$nextTick 将回调延迟到下次 DOM 更新循环之后执行等。
+		3、定义静态属性方法
+			除了原型方法之外，Vue 还提供了丰富的全局 api 方法，这些都是在 initGlobalAPI 中定义的。
+			看着源码对静态方法的定义做一个汇总。
+				1.为源码里的 config 配置做一层代理，可以通过 Vue.config 拿到默认的配置，并且可以修改它的属性值，具体哪些可以配置修改，可以参照官方文档。
+				2.定义内部使用的工具方法，例如：警告提示，对象合并等。
+				3.定义 set、delete、nextTick 方法，本质上原型上也有这些方法的定义。
+				4.对 Vue.components、Vue.derective、Vue.filter 的定义，这些都是构造器的默认选项。
+				5.定义 Vue.use() 方法。
+				6.定义 Vue.mixin() 方法。
+				7.定义 Vue.extend() 方法。extend 方法实现了对象的合并，如果属性相同，则用新的属性值覆盖旧值。
+	* 构造器的默认选项
+		因此作为构造器而言，Vue 默认的资源选项配置如下：
+		Vue.options = {
+			components: {
+				KeepAlive: {},
+				Transtion: {},
+				TranstionGrop: {}
+			},
+			directives: {
+				model: {inserted: f, componentUpdated:f },
+				show: {bind: f, update: f, unbind: f }
+			},
+			filters: {},
+			_base
+		}
+	* 选项检查：
+		从构造器的定义我们很容易发现，实例化 Vue 做的核心操作便是执行 init 方法进行初始化。
+		初始化操作会经过选项合并配置，初始化生命周期，初始化事件中心，乃至构建数据响应式系统等。
+		而第一步就是对选项的合并。合并后的选项会挂载到实例的 $options 属性中。
+
+		vm.$options = mergeOptions(resolveConstructorOptions(vm.constructor),options || {},vm);
+
+		选项合并的重点是将 '用户自身传递的 options 选项' 和 'Vue 构造函数自身的选项配置'合并。
+
+		选项合并过程中更多的不可控在于不知道用户传递了哪些配置选项，这些配置选项是否符合规范，是否达到合并配置的要求。因此每个选项的书写规则需要严格限定，原则上不允许用户脱离规则外来传递选项。因此在合并选项之前，很多的一部分工作是对选项的校验。
+
+		其中 compoenet,prop,inject,directive 等是检验的重点。
+		1. compoenets 规范检验
+			会在 validateComponentName 函数做校验。遍历components对象，对每个属性值校验。
+			for(var key in options.compoenets){ validateComponentName(key); }
+			validateComponentName(name){
+				// 正则判断检测是否为非法的标签，例如数字开头
+				// 不能使用Vue自身自定义的组件名，如 slot,component,不能使用html的保留标签，如 h1,svg 等
+			} 
+		2. props 规范检验
+			Vue 的官方文档规定了 props 选项的书写形式有两种，分别是
+			1.数组形式 { props:['a','b','c'] },
+			2.带校验规则的对象形式 { props:{a:{type:'String',default:'prop校验'}} } 从源码上看，两种形式最终都会转换成对象的形式。
+			// 非数组，非对象则判定props选项传递非法
+		3. inject 的规范校验
+			provide/inject 这对组合在我们日常开发中可能使用的比较少，当我们需要在父组件中提供数据或者方法给后代组件使用时可以用带 provide/inject，注意关键是后代，而不单纯指子代，
+			这是有别于 props 的使用场景。官方把它称为依赖注入，依赖注入使得组件后代都能访问到父代注入的数据/方法，且后代不需要知道数据的来源。重要的一点，依赖提提供的数据是非响应式的。
+			// 父组件
+			var Provider = { provide:{ foo:'bar' } }
+			// 后代组件
+			var Child = { 
+				// 数组写法
+				inject: ['foo'],
+				// 对象写法
+				inject: [
+					from: 'foo',
+					default: 'bardefault'
+				]
+			}
+			inject 选项有两种写法，数组的方式以及对象的方式，和 props 的校验规则一致，最终 inject 都会转换成对象的形式存在。
+		4. directive 的规范校验
+			我们先看看指令选项的用法，Vue 允许我们自定义指令，并且它提供了五个钩子函数 bind,inserted,update,compoenetUpdated,unbind 除了可以以对象的形式去定义钩子函数外，官方还提供了一种函数的简写，例如：
+			{
+				directives: {
+					'color-swatch': function(el,binding){ el.style.backgroundColor = binding.value }
+				}
+			}
+			函数的写法会在 bind，update 钩子中触发相同的行为，并且不关心其他钩子。这个行为就是定义的函数。因此在对 directives 进行规范化时，针对函数的写法会将行为赋予 bind，update  钩子。
+			function normalizeDirectives(options){
+				var dirs = options.directives;
+				if(dirs){
+					for(var key in dirs){
+						var def###1 = dirs[key];
+						// 函数简写同样会转换对象的形式
+						if(typeof def#111 === 'function'){
+							dirs[key] = { bind: def###1, update: def###1 };
+						}
+					}
+				}
+			}
+		5. 函数缓存
+			这个内容跟选项的规范化无关，当读到上面规范检测的代码时，笔者发现有一段函数优化的代码值得我们学习。它将每次执行函数后的值进行缓存，当再次执行的时候直接调用缓存的数据而不是重复执行函数，以此提高前端性能，这是典型的用空间换时间的优化，也是经典的偏函数应用。
+			function cached(fn){
+				var cache = Object.create(null); // 创建空对象作为缓存对象
+				return (function cachedFn(str){
+					var hit = cache[str];
+					return hit || (cache[str] = fn(str)) // 每次执行时缓存对象有值则不需要执行函数方法，没有则执行并缓存起来
+				})
+			}
+			var camelizeRE = /-(\W)/g;
+			// 缓存会保存每次进行驼峰转换的结果
+			var camelize = cached(function(str){
+				// 将诸如 'a-b' 的写法统一处理成驼峰写法 'aB'
+				return str.replace(camelizeRE, function(_,c){ return c ? c.toUpperCase() : '' ; })
+			})
+	* 子类构造器
+		Vue 提供了一个 Vue.extend 的静态方法，它是基于基础的 Vue 构造器创建一个“子类”，而这个子类所传递的选项配置会和父类的选项进行合并。这是选项合并场景的由来。
+		
+		Vue.extend 的实现思路很清晰，创建一个 Sub 的类，这个类的原型指向了父类，并且子类的 options 会和父类的 options 的进行合并，mergeOptions 的其他细节如下。
+		Vue.extend = function(extendOptions){
+			extendOptions = extendOptions || {};
+			var Super = this;
+			var name = extendOptions.name || Super.options.name;
+			if(name){
+				validateComponentName(name); // 校验子类的名称是否符合规范
+			}
+			// 创建子类构造器
+			var Sub = function VueComponent(options){
+				this._init(options);
+			};
+			Sub.prototype = Object.create(Super.prototype); // 子类继承与父类
+			Sub.prototype.constructor = Sub;
+			Sub.cid = cid++;
+			// 子类和父类构造器的配置选项进行合并
+			Sub.options = mergeOptions(
+				Super.options,
+				extendOptions
+			)
+			return Sub; // 返回子类构造函数
+		}
+	* 合并策略
+		合并策略之所以是难点，其中一个是合并选项类型繁多，合并规则随着选项的不同也呈现差异。概括起来思路主要是以下两点：
+			1.Vue 针对每个规定的选项都有定义好的合并策略，例如 data,component,mounted 等。如果合并的子父配置都具有相同的选项，则只需要按照规定好的策略进行选项合并即可。
+			2.由于 Vue 传递的选项是开发式的，所以也存在传递的选项没有自定义选项的情况，这时候由于选项不存在默认的合并策略，所以处理的原则是有子类配置选项则默认使用子类配置选项，没有则选择父类配置选项。
+
+		我们通过这两个思想去分析源码的实现，先看看 mergeOptions 除了规范检测后的逻辑。
+		两个 for 循环规定了合并的顺序，以自定义选项策略优先，如果没有才会使用默认策略。而 strats 下每个 key 对应的便是每个特殊选项的合并策略。
+		
+		默认策略
+			我们可以用丰富的选项去定义实例的行为，大致可以分为以下几类：
+				1.用 data,props,computed 等选项定义实例数据
+				2.用 mounted,created,destoryed 等定义生命周期函数
+				3.用 components 注册组件
+				4.用 methods 选项定义实例方法
+			当然还有诸如watch,inject,directives,filter等选项，总而言之，Vue提供的配置项是丰富的。除此之外，我们也可以使用没有默认配置策略的选项，典型的例子是状态管理Vuex和配套路由vue-router的引入：
+				new Vue({
+					store, // vuex
+					router // vue-router
+				})
+		接下来会进入某些具体的合并策略的分析，大致分为五类：
+			1.常规选项合并
+			2.自带资源选项合并
+			3.生命周期构造合并
+			4.watch 选项合并
+			5.props,methods,inject,computed 类似选项合并
+	* 常规选项的合并
+		1.el合并
+			el 的合并策略是在保证选项只存在于根的 Vue 实例的情形下使用默认策略进行合并。
+			// 只允许vue实例才拥有el属性，其他子类构造器不允许有el属性。
+		2.data合并
+			data 策略最终调用的 mergeDataOrFn 方法，区别在于当前 vm 是否是实例，或者是单纯的子父类的关系。如果是子父类的关系，需要对 data 选项进行规范校验，保证它的类型是一个函数而不是对象。
+			mergeData 方法的两个参数是父 data 选项和子 data 选项的结果，也就是两个 data 对象，从源码上看数据合并的原则是，将父类的数据整合到子类的数据选项中，如若父类数据和子类数据冲突时，保留子类数据。如果对象深层嵌套，则需要递归调用 mergeData 进行数据合并。
+
+			最后回过头来思考一个问题，问什么 Vue 组件的 data 是一个函数，而不是一个对象呢？
+			我觉得可以这样解释：组件设计的目的是为了复用，每次通过函数创建相当于在一个独立内存空间中生成一个 data 的副本，这样每个组件之间的数据不会相互影响。
+	* 自带资源合并
+		在1.2中我们看到了Vue默认会带几个选项，分别是components组件, directive指令, filter过滤器,所有无论是根实例，还是父子实例，都需要和系统自带的资源选项进行合并。它的定义如下：
+		// 资源选项
+		var ASSET_TYPES = [ 'component','directive','filter' ];
+		// 定义资源合并的策略
+		ASSET_TYPES.forEach(function(type){
+			strats[type + 's'] = mergeAssets; // 定义默认策略
+		})
+		这些资源选项的合并逻辑很简单，首先会创建一个原型指向父类资源选项的空对象，再将子类选项赋值给空对象。
+		// 资源选项自定义合并策略
+		function mergeAssets (parentVal,childVal,vm,key) {
+		  var res = Object.create(parentVal || null); // 创建一个空对象，其原型指向父类的资源选项。
+		  if (childVal) {
+		    assertObjectType(key, childVal, vm); // components,filters,directives选项必须为对象
+		    return extend(res, childVal) // 子类选项赋值给空对象
+		  } else {
+		    return res
+		  }
+		}
+
+		总结：对于 directives、filters 以及 components 等资源选项，父类选项将以原型链的形式被处理。子类必须通过原型链才能找到并使用内置组件和内置指令。
+	* 生命周期钩子函数的合并
+		子父组件的生命周期钩子函数是遵循什么样的规则合并。
+		var LIFECYCLE_HOOKS = [
+		  'beforeCreate',
+		  'created',
+		  'beforeMount',
+		  'mounted',
+		  'beforeUpdate',
+		  'updated',
+		  'beforeDestroy',
+		  'destroyed',
+		  'activated',
+		  'deactivated',
+		  'errorCaptured',
+		  'serverPrefetch'
+		];
+		LIFECYCLE_HOOKS.forEach(function (hook) {
+		  strats[hook] = mergeHook; // 对生命周期钩子选项的合并都执行mergeHook策略
+		});
+		mergeHook 是生命周期钩子合并的策略，简单的对代码进行总结，钩子函数的合并原则是：
+			1.如果子类和父类都拥有相同钩子选项，则将子类选项和父类选项合并。
+			2.如果父类不存在钩子选项，子类存在时，则以数组形式返回子类钩子选项。
+			3.如果子类不存在钩子选项，则以父类选项返回。
+			4.子父合并时，是将子类选项放在数组的末尾，这样在执行钩子时，永远是父类选项优于子类进行选项执行。
+
+		总结:对于生命周期钩子选项，子类和父类相同的选项将合并成数组，这样在执行子类钩子函数时，父类钩子选项也会执行，并且父会优先于子执行。
+	* watch选项的合并
+		在使用Vue进行开发时，我们有时需要自定义侦听器来响应数据的变化，当需要在数据变化时执行异步或者开销较大的操作时，watch往往是高效的。对于 watch 选项的合并处理，它类似于生命周期钩子，只要父选项有相同的观测字段，则和子的选项合并为数组，在监测字段改变时同时执行父类选项的监听代码。处理方式和生命钩子选项的区别在于，生命周期钩子选项必须是函数，而watch选项最终在合并的数组中可以是包含选项的对象，也可以是对应的回调函数，或者方法名。
+
+		总结：对于 watch 选项的合并，最终和父类选项合并成数组，并且数组的选项成员，可以是回调函数，选项对象，或者函数名。
+	* props methods inject computed 合并
+		源码的设计将props.methods,inject,computed归结为一类，他们的配置策略一致，简单概括就是，如果父类不存在选项，则返回子类选项，子类父类都存在时，用子类选项去覆盖父类选项。
+
+小结：
+	
+	至此，五类选项合并的策略分析到此结束，回顾一下这一章节的内容，这一节是 Vue 源码分析的起手式，所以我们从 Vue 的引入触发，先大致了解了 Vue 在代码引入阶段做的操作，主要是对静态方法和原型上属性方法的定义和生命，这里并不需要精确了解到每个方法的功能和实现细节，当然我也相信你已经在实战或多或少接触过这些方法的使用。接下来到文章的重点，new Vue 是我们正确使用 Vue 进行开发的关键，而实例化阶段会对调用 _init 方法方法进行初始化，选项合并时初始化的第一步。选项合并会对系统内部定义的选项和子父类的选项进行合并。而 Vue 有相当丰富的选项合并策略，不管是内部的选项还是用户的自定义的选项，他们都遵循内部约定好的合并策略。有了丰富的选项和严格的合并策略，Vue 在知道开发上才显得更加完备。下一节会分析一个重要的概念，数据代理，它也是响应式系统的基础。
+
+	

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ObjectDefineProperty</title>
+</head>
+<body>
+  <script>
+    var o = {};
+    var value;
+    Object.defineProperty(o,'a',{
+      get(){
+        console.log('获取值');
+        return value;
+      },
+      set(v){
+        console.log('设置值');
+        value = v
+      }
+    })
+    o.a = 'sss';
+    console.log(o.a);
+
+    var arr = [1,2,3];
+    arr.forEach((item,index)=>{
+      Object.defineProperty(arr,index,{
+        get(){
+          console.log('数组被getter拦截');
+          return item;
+        },
+        set(val){
+          console.log('数组被setter拦截');
+          return item = val;
+        }
+      })
+    })
+    arr[1] = 4;
+    console.log(arr);
+  </script>
+</body>
+</html>
