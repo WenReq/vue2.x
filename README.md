@@ -44,7 +44,12 @@
   	为vm添加 _vnode、$slots、$scopedSlots等属性。添加了 _c 和 createElement 两个渲染方法。 <br>
 	并且把 $attrs 属性和 $listener 事件属性添加到 defineReactive 观察者中。
   + initState 构建响应式 <br>
-
+	1. initProps 将props属性设置为响应式数据
+	2. initMethods 必须为函数；命名不能props重复；不能_ $命名;挂载到根实例上。
+	3. initComputed 对象时要有getter 方法；对每个属性创建个监听依赖；设计响应式数据；命名防止和data、props冲突。
+	4. initWatch 对象。循环 watch 执行 createWatcher -> vm.$watch() 处理。
+	5. initData 命名不能和props、methods重复；数据代理（vm._data）; 为data绑定一个观察者observe。 <br>
+	nitDate -> new Observer(options.data) -> this.walk(data) -> defineReactive(obj, keys[i]) -> new Dep(); Object.defineProperty(obj, key, {get() {// 做依赖的收集 dep.depend()},set(nval) {// 派发更新 dep.notify();})
 ## 实例挂载和模板编译 vm.$mount(vm.$options.el)
 
 ## 渲染流程 vnode = _render.call(vm._renderProxy,$createElement)
