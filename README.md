@@ -34,6 +34,7 @@
       4. watch 选项合并；最终和父类选项合并成数组，并且数组的选项成员，可以是回调函数，选项对象，或者函数名。
       5. props,methods,inject,computed 类似选项合并；如果父类不存在选项，则返回子类选项，子类父类都存在时，用子类选项去覆盖父类选项。
   + initProxy 数据代理 
+ 	为 vm 实例化对象添加了 _renderProxy 方法。拦截 with 语句下的作用对象,对非法没有定义的变量进行筛选判断。
   + initLifecycle 初始化生命周期
   + initEvents 初始化组件事件 
   + initRender 初始化渲染
