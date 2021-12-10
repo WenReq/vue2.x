@@ -30,25 +30,35 @@ export function initMixin (Vue: Class<Component>) {
     vm._isVue = true
     // merge options
     if (options && options._isComponent) {
-      // optimize internal component instantiation
-      // since dynamic options merging is pretty slow, and none of the
-      // internal component options needs special treatment.
+      // optimize internal component instantiation 优化内部组件实例化
+      // since dynamic options merging is pretty slow, and none of the 因为动态选项合并是相当缓慢的，没有
+      // internal component options needs special treatment. 内部组件选项需要特殊处理。
       initInternalComponent(vm, options)
     } else {
       // 选项合并
+      // 两个 for 循环规定了合并的顺序，以自定义选项策略优先，如果没有才会使用默认策略。而 strats 下每个 key 对应的便是每个特殊选项的合并策略。
+      // 1.如果合并的子父配置都具有相同的选项，则只需要按照规定好的策略进行选项合并即可。2.有子类配置选项则默认使用子类配置选项，没有则选择父类配置选项。
       /*
         mergeOptions合并options参数（ resolveConstructorOptions合并vm.constructor构造函数的属性options）。 集合在 vm.options 上。
-        选项检查：
-          1. components（ checkComponents(child)） 1. 正则判断非法的标签 2. 不能使用Vue自身自定义的组件名， html的保留标签。
-          2. prop（ normalizeProps(child, vm)） 形式： 数组、 对象形式； 两种形式最终都会转换成对象的形式。 规则： 1. 数组形式保证是字符串 2. 非数组， 非对象则判定props选项传递非法
-          3. inject（ normalizeInject(child, vm)） inject 选项有两种写法， 数组的方式以及对象的方式， 和 props 的校验规则一致， 最终 inject 都会转换成对象的形式存在。
-          4. directive（ normalizeDirectives(child)）。 针对函数的写法会将行为赋予 bind， update 钩子。
+        选项检查： components\ prop\ inject\ directive
+          1. checkComponents(child)
+            1. 正则判断非法的标签
+            2. 不能使用Vue自身自定义的组件名， html的保留标签。
+          2. normalizeProps(child, vm)
+            形式： 数组、 对象形式； 两种形式最终都会转换成对象的形式。
+            规则： 1. 数组形式保证是字符串 2. 非数组， 非对象则判定props选项传递非法
+          3. normalizeInject(child, vm)
+            inject 选项有两种写法， 数组的方式以及对象的方式， 和 props 的校验规则一致， 最终 inject 都会转换成对象的形式存在。
+          4. normalizeDirectives(child)
+            针对函数的写法会将行为赋予 bind， update 钩子。
         选项合并：
-          1. 常规选项合并（ el， data）。 只允许vue实例才拥有el属性， 其他子类构造器不允许有el属性。
+          1. 常规选项合并（ el， data）。
+            只允许 vue 实例才拥有 el 属性， 其他子类构造器不允许有 el 属性。
             mergeDataOrFn 将父类的数据整合到子类的数据选项中， 如若父类数据和子类数据冲突时， 保留子类数据， 如果对象深层嵌套， 则需要递归调用 mergeData 进行数据合并。
-          2. 默认资源合并（ component、 directive、 filter）。 父类选项将以原型链的形式被处理。
+          2. 默认资源合并（ component、 directive、 filter）。
+            父类选项将以原型链的形式被处理。
           3. 生命周期钩子函数合并（ 'beforeCreate', 'created', 'beforeMount', 'mounted', 'beforeUpdate', 'updated', 'beforeDestroy', 'destroyed', 'activated', 'deactivated', 'errorCaptured', 'ssrPrefetch'）
-          mergeHook策略， 对于生命周期钩子选项， 子类和父类相同的选项将合并成数组。 父会优先于子执行。
+            mergeHook 策略， 对于生命周期钩子选项， 子类和父类相同的选项将合并成数组。 父会优先于子执行。
           4. watch 选项合并。 和父类选项合并成数组。
           5. props, methods, inject, computed 类似选项合并。 如果父类不存在选项， 则返回子类选项， 子类父类都存在时， 用子类选项去覆盖父类选项。
       */
@@ -76,10 +86,10 @@ export function initMixin (Vue: Class<Component>) {
       为 vm 添加了$root、 $parent、 $children、 $refs等属性。
     */
     initLifecycle(vm)
-    // 初始化组件事件
+    // 初始化事件中心
     /*
-      如果 vm.$options._parentListeners 事件存在， updateComponentListenets更新组件事件， 添加新的事件， 删除旧的事件。
-      updateListeners更新事件。 add添加事件（ 1. once标志真调用$once 执行一次函数就解绑2.once标志为假， $on添加事件， 把事件推进队列去vm._events[event]）
+      如果 vm.$options._parentListeners 事件存在， updateComponentListenets 更新组件事件， 添加新的事件， 删除旧的事件。
+      updateListeners 更新事件。 add添加事件（ 1. once标志真调用 $once 执行一次函数就解绑 2.once标志为假， $on 添加事件， 把事件推进队列去 vm._events[event] ）
     */
     initEvents(vm)
     // 初始化渲染
@@ -90,11 +100,11 @@ export function initMixin (Vue: Class<Component>) {
     initRender(vm)
     callHook(vm, 'beforeCreate')
     initInjections(vm) // resolve injections before data/props 在data/props之前resolve injections
-    // 构建响应式
+    // 构建响应式系统
     /*
       1. initProps 将props属性设置为响应式数据
       2. initMethods 必须为函数； 命名不能props重复； 不能 _ $ 命名; 挂载到根实例上。
-      3. initComputed对象时要有getter 方法； 对每个属性创建个监听依赖； 设计响应式数据； 命名防止和data、 props冲突。
+      3. initComputed 对象时要有 getter 方法； 对每个属性创建个监听依赖； 设计响应式数据； 命名防止和data、 props冲突。
       4. initData 命名不能和props、 methods重复； 数据代理（ vm.$data）;为data绑定一个观察者observer。
     */
     /*
@@ -125,7 +135,7 @@ export function initMixin (Vue: Class<Component>) {
 
 export function initInternalComponent (vm: Component, options: InternalComponentOptions) {
   const opts = vm.$options = Object.create(vm.constructor.options)
-  // doing this because it's faster than dynamic enumeration.
+  // doing this because it's faster than dynamic enumeration. 这样做是因为它比动态枚举更快。
   const parentVnode = options._parentVnode
   opts.parent = options.parent
   opts._parentVnode = parentVnode

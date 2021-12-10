@@ -76,6 +76,10 @@ export function renderMixin (Vue: Class<Component>) {
     // render self
     let vnode
     try {
+      /*
+        _c 和 $createElement 在initRender 函数中定义。 _c 是 template 内部模板编译成 render 函数时调用的方法。 $createElement 是手写render函数调用的方法。
+        通过模板生成的render函数 可以保证子节点都是Vnode； 手写的render 需要数据规范校验和规范子节点children。 通过 new Vnode() 生成完整的Vnode树。 遇到子组件优先处理子组件的初始化。
+      */
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)

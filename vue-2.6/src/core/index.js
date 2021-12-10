@@ -15,6 +15,7 @@ import { FunctionalRenderContext } from 'core/vdom/create-functional-component'
     initMixin$1 - Vue.mixin() 合并参数、
     initExtend - Vue.extend() 继承
   6. initAssetRegisters - 添加 component, directive, filter 静态方法 定义组件、 指令、 过滤器
+  7. 在一万多行又添加了 __patch__ 和 $mount 方法
 */
 initGlobalAPI(Vue)
 

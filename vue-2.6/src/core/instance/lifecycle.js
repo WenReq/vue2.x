@@ -55,7 +55,10 @@ export function initLifecycle (vm: Component) {
   vm._isBeingDestroyed = false
 }
 
-export function lifecycleMixin (Vue: Class<Component>) {
+export function lifecycleMixin(Vue: Class<Component>) {
+  /*
+    vm._update（ 定义在lifecycleMixin） 1. 初始化渲染阶段 2. 数据更新阶段。 通过判断 vm._vnode 是否有旧节点来是初始渲染还是数据更新。
+  */
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
     const prevEl = vm.$el
@@ -186,6 +189,13 @@ export function mountComponent (
       measure(`vue ${name} patch`, startTag, endTag)
     }
   } else {
+    /*
+      updateComponent() {
+        vm._update(vm._render(), hydrating);
+      }
+      vm._update（ 定义在 lifecycleMixin ） 1. 初始化渲染阶段 2. 数据更新阶段。 通过判断 vm._vnode 是否有旧节点来是初始渲染还是数据更新。
+      vm._update 核心是 __patch__, __patch__ = createPatchFunction 的返回值。 核心是通过调用 createElm 方法进行 dom 操作， 创建节点， 插入子节点， 递归创建一个完整的DOM树并插入到Body中。
+    */
     updateComponent = () => {
       vm._update(vm._render(), hydrating)
     }
